@@ -19,3 +19,5 @@ services:
           property: connectionString
       - key: ALLOWED_HOSTS
         value: .onrender.com
+    postDeploy:
+      - python manage.py migrate
