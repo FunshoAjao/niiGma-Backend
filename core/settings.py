@@ -1,6 +1,7 @@
 from decouple import config
 from pathlib import Path
 from datetime import timedelta
+import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -99,10 +100,7 @@ if ENVIRONMENT == "testing":
     
 elif ENVIRONMENT == "prod":
     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
+        'default': dj_database_url.config(default='postgres://localhost/dbname', conn_max_age=600)
     }
 
 REST_FRAMEWORK = {
