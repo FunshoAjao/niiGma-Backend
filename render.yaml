@@ -6,8 +6,6 @@ services:
     branch: dev 
     buildCommand: "./build.sh"
     startCommand: "gunicorn core.wsgi:application"
-    postDeploy:
-      - python manage.py migrate
     envVars:
       - key: DJANGO_SETTINGS_MODULE
         value: core.settings
