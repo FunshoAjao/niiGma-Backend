@@ -20,13 +20,9 @@ def send_template_email(template, email, subject, **context):
         send_mail(
             subject,
             plain_message,
-            "Lab7ai <{}>".format(settings.EMAIL_HOST_USER),
+            "Niigma <{}>".format(settings.EMAIL_HOST_USER),
             [email],
             html_message=html_message,
-            fail_silently=False,
-            connection=None,
-            auth_user=settings.EMAIL_HOST_USER,
-            auth_password=settings.EMAIL_HOST_PASSWORD
         )
         logger.info(f"Email sent successfully to user {email}")
     except SMTPException as e:

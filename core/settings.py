@@ -1,3 +1,4 @@
+import os
 from decouple import config
 from pathlib import Path
 from datetime import timedelta
@@ -42,6 +43,7 @@ THIRD_PARTY_APP = [
     'rest_framework',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
+    'django_redis',
 ]
 
 INSTALLED_APPS += SYSTEM_APP + THIRD_PARTY_APP
@@ -64,7 +66,7 @@ ROOT_URLCONF = 'core.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'accounts/services/templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -85,7 +87,7 @@ EMAIL_HOST = config("EMAIL_HOST")
 EMAIL_PORT = config("EMAIL_PORT", cast=int)
 EMAIL_HOST_USER = config("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
-EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=True, cast=bool)
+EMAIL_USE_SSL = config("EMAIL_USE_SSL")
 
 # Database
 ENVIRONMENT = config("ENVIRONMENT")
@@ -102,20 +104,9 @@ if ENVIRONMENT == "testing":
     }
     
 elif ENVIRONMENT == "prod":
-    print("about to migrate to prod db")
-    # DATABASES = {
-    #     'default': dj_database_url.config(conn_max_age=600)
-    # }
-    # print(DATABASES)
-    
     DATABASES = {
-        'default': dj_database_url.config(
-            # Replace this value with your local database's connection string.
-            default='postgresql://postgresql://nigma_backend_db_user:3wlbliJzHP49xKSFU7QVcaPxlVTkLFKl@dpg-d0d610ruibrs73bq15c0-a/nigma_backend_db',
-            conn_max_age=600
-        )
+        'default': dj_database_url.config(conn_max_age=600)
     }
-    print(DATABASES)
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
@@ -190,6 +181,7 @@ SPECTACULAR_SETTINGS = {
 
 
 # Redis Configuration
+REDIS_URL=config("REDIS_HOST")
 REDIS_HOST = config("REDIS_HOST")
 REDIS_PORT = config("REDIS_PORT")
 
@@ -200,14 +192,14 @@ CELERY_TIMEZONE = 'UTC'
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 
-BROKER_URL = f'redis://{REDIS_HOST}:{REDIS_PORT}/0'
-CELERY_RESULT_BACKEND = BROKER_URL
-CELERY_BROKER_URL = BROKER_URL
+BROKER_URL = REDIS_URL
+CELERY_RESULT_BACKEND = REDIS_URL
+CELERY_BROKER_URL = REDIS_URL
 
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': f'{REDIS_HOST}',
+        'LOCATION': REDIS_URL,
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
         },

@@ -40,10 +40,10 @@ class UserService:
     @transaction.atomic
     def __create_user(self, **kwargs):
         try:
-            email = kwargs['email']
-            password = kwargs['password']
-            first_name = kwargs.get("first_name", "")
-            last_name = kwargs.get("last_name", "")
+            email = kwargs.pop('email')
+            password = kwargs.pop('password')
+            first_name = kwargs.pop("first_name")
+            last_name = kwargs.pop("last_name")
 
             if not User.objects.filter(email=email).exists():
                 self.user = User(
@@ -52,7 +52,8 @@ class UserService:
                     last_name=last_name,
                     is_active=False,
                     account_verified=False,
-                    account_verified_at=None
+                    account_verified_at=None,
+                    **kwargs
                 )
                 self.user.set_password(password)
                 self.user.save()
