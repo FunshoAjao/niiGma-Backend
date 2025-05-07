@@ -4,7 +4,8 @@ services:
     env: python
     plan: free
     branch: dev 
-    buildCommand: "pip install -r requirements.txt && python manage.py migrate"
+    # buildCommand: "pip install -r requirements.txt && python manage.py migrate"
+    buildCommand: "./build.sh"
     startCommand: "gunicorn core.wsgi:application"
     postDeploy:
       - python manage.py migrate
