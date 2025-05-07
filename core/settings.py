@@ -102,9 +102,11 @@ if ENVIRONMENT == "testing":
     }
     
 elif ENVIRONMENT == "prod":
+    print("about to migrate to prod db")
     DATABASES = {
-        'default': dj_database_url.config(default='postgres://localhost/dbname', conn_max_age=600)
+        'default': dj_database_url.config(conn_max_age=600)
     }
+    print(DATABASES)
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
