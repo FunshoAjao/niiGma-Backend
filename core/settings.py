@@ -35,6 +35,7 @@ SYSTEM_APP = [
 ]
 
 THIRD_PARTY_APP = [
+    'celery',
     'corsheaders',
     'drf_spectacular',
     'drf_yasg',
@@ -44,6 +45,8 @@ THIRD_PARTY_APP = [
 ]
 
 INSTALLED_APPS += SYSTEM_APP + THIRD_PARTY_APP
+
+AUTH_USER_MODEL = "accounts.User"
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
@@ -88,15 +91,15 @@ EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=True, cast=bool)
 ENVIRONMENT = config("ENVIRONMENT")
 if ENVIRONMENT == "testing":
     DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('DBNAME_DEV'),
-        'USER': config('DATABASE_USER'),
-        'HOST': config('DATABASE_HOST'),
-        'PORT': config('DATABASE_PORT'),
-        'PASSWORD' : config('DATABASE_PASSWORD')
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': config('DBNAME_DEV'),
+            'USER': config('DATABASE_USER'),
+            'HOST': config('DATABASE_HOST'),
+            'PORT': config('DATABASE_PORT'),
+            'PASSWORD' : config('DATABASE_PASSWORD')
+        }
     }
-}
     
 elif ENVIRONMENT == "prod":
     DATABASES = {
@@ -153,8 +156,6 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
-
-AUTH_USER_MODEL = "accounts.User"
 
 LANGUAGE_CODE = 'en-us'
 
