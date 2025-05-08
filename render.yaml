@@ -39,6 +39,4 @@ services:
           name: nigma_backend_db_dev
           property: connectionString
       - key: REDIS_HOST
-        value: red-d0d965je5dus73a7sdkg
-      - key: REDIS_PORT
-        value: 6379
+        sync: false
