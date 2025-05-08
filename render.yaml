@@ -39,4 +39,4 @@ services:
           name: nigma_backend_db_dev
           property: connectionString
       - key: REDIS_URL
-        sync: false
+        value: redis://red-d0d965je5dus73a7sdkg:6379/0
