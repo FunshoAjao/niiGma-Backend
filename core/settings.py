@@ -18,9 +18,7 @@ ALLOWED_HOSTS = [
     '127.0.0.1'
 ]
 
-
 # Application definition
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -175,7 +173,6 @@ SPECTACULAR_SETTINGS = {
     'DESCRIPTION': 'Backend documentation for the Niigma project',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
-    # OTHER SETTINGS
 }
 
 
