@@ -38,5 +38,5 @@ services:
         fromDatabase:
           name: nigma_backend_db_dev
           property: connectionString
-      - key: REDIS_HOST
+      - key: REDIS_URL
         sync: false
