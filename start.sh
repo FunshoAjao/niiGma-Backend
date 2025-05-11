@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Exit on error
-set -o errexit
+# start.sh
 
-echo "📦 Starting Celery Worker"
-celery -A core worker -l info
+# Start Celery in background
+celery -A core worker -l info &
+
+# Start Django web server
+gunicorn core.wsgi:application

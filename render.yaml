@@ -5,7 +5,8 @@ services:
     plan: free
     branch: dev 
     buildCommand: "./build.sh"
-    startCommand: "gunicorn core.wsgi:application"
+    # startCommand: "gunicorn core.wsgi:application"
+    startCommand: "./start.sh"
     envVars:
       - key: DJANGO_SETTINGS_MODULE
         value: core.settings
