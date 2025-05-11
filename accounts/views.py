@@ -105,20 +105,16 @@ class UserViewSet(viewsets.ModelViewSet):
         email = validated_data.get("email")
         verification_code = validated_data.get("verification_code")
 
-        try:
-            user_service = UserService(user=request.user)
-            user, token = user_service.verify_user(verification_code, email)
-            logger.info(f"User {email} verified successfully")
+        user_service = UserService(user=request.user)
+        user, token = user_service.verify_user(verification_code, email)
+        logger.info(f"User {email} verified successfully")
 
-            data = {
-                "access": token.get("access"),
-                "refresh": token.get("refresh"),
-                "customer": UserSerializer(user).data
-            }
-            return CustomSuccessResponse(data=data, message="Account Verified successfully", status=201)
-        except Exception as e:
-            logger.error(f"Error verifying user {email}: {str(e)}")
-            return CustomErrorResponse(message=str(e), status=400)
+        data = {
+            "access": token.get("access"),
+            "refresh": token.get("refresh"),
+            "customer": UserSerializer(user).data
+        }
+        return CustomSuccessResponse(data=data, message="Account Verified successfully", status=201)
 
     @action(
         methods=["post"],
