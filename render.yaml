@@ -26,6 +26,7 @@ services:
     plan: free
     branch: dev
     buildCommand: "./build.sh"
+    startCommand: "./start.sh"
     startCommand: "celery -A core worker -l info"
     envVars:
       - key: DJANGO_SETTINGS_MODULE
