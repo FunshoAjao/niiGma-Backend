@@ -243,7 +243,7 @@ class UserService:
     @transaction.atomic
     def reset_account_password(self, email, password, verification_code):
         try:
-            if cache.get(email) == verification_code:
+            if cache.get(verification_code) == email:
                 self.user = User.objects.get(email=email)
 
                 self.user.is_active = True

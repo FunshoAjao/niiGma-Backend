@@ -57,14 +57,16 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    date_of_birth = models.DateField(null=True, blank=True)
+    date_of_birth = models.DateTimeField(null=True, blank=True)
     height = models.FloatField(null=True, blank=True)
 
     wellness_status = models.CharField(max_length=100, null=True, blank=True)  # ["Healthy", "Sick", "Injured"]
     referral_source = models.CharField(max_length=100, null=True, blank=True)
-    # ["Friend", "Social Media", "Advertisement"]# ["AWS", "GCP", "Azure"]
     goals = models.JSONField(default=list, blank=True)  # ["Reduce cloud costs", "Generate billing reports", etc.]
 
+    has_completed_onboarding = models.BooleanField(default=False)
+    onboarding_completed_at = models.DateTimeField(null=True, blank=True)
+    
     objects = UserManager()
 
     USERNAME_FIELD = 'email'

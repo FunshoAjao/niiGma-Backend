@@ -5,6 +5,10 @@ from .models import User
 class UserSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(required=False, allow_blank=True)
     last_name = serializers.CharField(required=False, allow_blank=True)
+    goals = serializers.JSONField(required=False)
+    date_of_birth = serializers.DateTimeField(required=False)
+    height = serializers.FloatField(required=False)
+    referral_source = serializers.CharField(required=False, allow_blank=True)
     password = serializers.CharField(write_only=True, required=True)
     email = serializers.EmailField(required=True, validators=[])
 
@@ -14,23 +18,28 @@ class UserSerializer(serializers.ModelSerializer):
             "id", "email", "password", "first_name", "last_name",
             "goals", "date_of_birth", "height", "wellness_status", "referral_source",
             "is_active", "last_login", "is_superuser", "is_staff",
-            "account_verified", "account_verified_at", "created_at", "updated_at"
+            "account_verified", "account_verified_at", "created_at", "updated_at", "has_completed_onboarding"
         ]
         read_only_fields = [
             "account_verified", "account_verified_at", "is_active",
-            "last_login", "is_superuser", "is_staff", "created_at", "updated_at"
+            "last_login", "is_superuser", "is_staff", "created_at", "updated_at", "has_completed_onboarding"
         ]
 
     def validate_email(self, value):
         value = value.strip().lower()
         if not value:
             raise serializers.ValidationError("Email field cannot be empty.")
-        if User.objects.filter(email=value).exists():
+        if not self.instance and User.objects.filter(email=value).exists():
             raise serializers.ValidationError("A user with this email already exists.")
         return value
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        
+        # If updating (instance exists), make email read-only
+        if self.instance:
+            self.fields['password'].read_only = True
+            self.fields['email'].read_only = True
 
 class EmailSerializer(serializers.Serializer):
     email = serializers.EmailField(max_length=255, required=True)

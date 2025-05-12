@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.middleware.csrf import get_token
-from rest_framework.decorators import api_view, permission_classes
+from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.permissions import AllowAny
 from rest_framework import viewsets
@@ -69,11 +69,30 @@ class UserViewSet(viewsets.ModelViewSet):
     def update(self, request, *args, **kwargs):
         """update user"""
         partial = kwargs.pop('partial', False)
+        request.data.pop('password', None)
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            return CustomErrorResponse(message=serializer.errors, status=400)
+        
         self.perform_update(serializer)
-        return CustomSuccessResponse(data=serializer.data)
+        instance.refresh_from_db()
+        required_fields = [
+            instance.date_of_birth,
+            instance.height,
+            instance.wellness_status,
+            instance.referral_source,
+            instance.goals
+        ]
+
+        # Check if all required fields are filled
+        if all(required_fields) and not instance.has_completed_onboarding:
+            instance.has_completed_onboarding = True
+            instance.onboarding_completed_at = timezone.now()
+            instance.save(update_fields=['has_completed_onboarding', 'onboarding_completed_at'])
+            return CustomSuccessResponse(data=serializer.data, message="User updated successfully")
+        
+        return CustomSuccessResponse(data=serializer.data, message="User updated successfully")
 
     def destroy(self, request, *args, **kwargs):
         """Delete user"""
@@ -229,7 +248,9 @@ class UserViewSet(viewsets.ModelViewSet):
                     "account_verified_at": user.account_verified_at.isoformat() if user.account_verified_at else None,
                     "created_at": user.created_at.isoformat() if user.created_at else None,
                     "updated_at": user.updated_at.isoformat() if user.updated_at else None,
-                    "avatar_url": user.avatar_url if hasattr(user, "avatar_url") else None
+                    "avatar_url": user.avatar_url if hasattr(user, "avatar_url") else None,
+                    "has_completed_onboarding": user.has_completed_onboarding,
+                    "onboarding_completed_at": user.onboarding_completed_at.isoformat() if user.onboarding_completed_at else None,
                 })
         except Exception as e:
             return CustomErrorResponse(message="Failed to retrieve user information", status=500)
@@ -258,7 +279,8 @@ class UserViewSet(viewsets.ModelViewSet):
     )
     def change_password(self, request, *args, **kwargs):
         serializer = ChangePasswordSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            return CustomErrorResponse(message=serializer.errors, status=400)
         validated_data = serializer.validated_data
         customer = User.objects.get(user=request.user)
         user_service = UserService(customer=customer)
@@ -316,7 +338,8 @@ class UserViewSet(viewsets.ModelViewSet):
     )
     def reset_password(self, request, *args, **kwargs):
         serializer = AccountPasswordResetSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            return CustomErrorResponse(message=serializer.errors, status=400)
         validated_data = serializer.validated_data
         user_service = UserService()
         user, token = user_service.reset_account_password(
@@ -327,7 +350,7 @@ class UserViewSet(viewsets.ModelViewSet):
         data = {
                 "access": token.get("access"),
                 "refresh": token.get("refresh"),
-                "back_office": self.serializer_class(user).data
+                "back_office": UserSerializer(user).data
             }
         return CustomSuccessResponse(data=data, message='Password reset successfully')
 

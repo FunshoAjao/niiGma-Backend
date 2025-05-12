@@ -38,15 +38,13 @@ def send_sign_up_email(email, verification_code):
 def verify_account_email(email, verification_code):
     user = User.objects.get(email=email)
 
-    otp_link = settings.VERIFY_OTP_LINK
     send_template_email(
         "verify_account_email.html",
         email,
         "Verify Account",
         **{
             "username": user.first_name + ' ' + user.last_name,
-            "otp_code": verification_code,
-            "verification_link": f'{otp_link}?email={email}'
+            "otp_code": verification_code
         },
     )
     logger.info("Verify account email sent successfully: {}".format(email))
