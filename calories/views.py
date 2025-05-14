@@ -40,7 +40,23 @@ class CalorieViewSet(viewsets.ModelViewSet):
         })
 
     def create(self, request, *args, **kwargs):
-        raise NotFound()
+        """Create or update the user's calorie object (only one entry per user)"""
+        data = request.data.copy()
+        data.pop('user', None) 
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            return CustomErrorResponse(message=serializer.errors, status=400)
+
+        validated_data = serializer.validated_data
+        obj, created = CalorieQA.objects.update_or_create(
+            user=request.user,
+            defaults=validated_data
+        )
+
+        response_serializer = self.get_serializer(obj)
+        message = "Calorie created successfully" if created else "Calorie updated successfully"
+        return CustomSuccessResponse(data=response_serializer.data, message=message, status=201 if created else 200)
+
 
     def list(self, request, *args, **kwargs):
         """Get calories created"""
