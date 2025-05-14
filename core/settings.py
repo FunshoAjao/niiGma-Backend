@@ -32,6 +32,8 @@ SYSTEM_APP = [
     'accounts',
     'calories',
     'symptoms',
+    'ovulations',
+    'mindspace',
 ]
 
 THIRD_PARTY_APP = [
@@ -209,11 +211,12 @@ CACHES = {
     }
 }
 
-import sentry_sdk
+if ENVIRONMENT == "prod":
+    import sentry_sdk
 
-sentry_sdk.init(
-    dsn="https://89326407107b0a6506a6a83b2511ab05@o4508864956858368.ingest.us.sentry.io/4509286400786432",
-    # Add data like request headers and IP for users,
-    # see https://docs.sentry.io/platforms/python/data-management/data-collected/ for more info
-    send_default_pii=True,
-)
+    sentry_sdk.init(
+        dsn="https://89326407107b0a6506a6a83b2511ab05@o4508864956858368.ingest.us.sentry.io/4509286400786432",
+        # Add data like request headers and IP for users,
+        # see https://docs.sentry.io/platforms/python/data-management/data-collected/ for more info
+        send_default_pii=True,
+    )

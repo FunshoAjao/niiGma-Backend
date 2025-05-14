@@ -18,7 +18,7 @@ def generate_calorie_prompt(user, user_prompt: str) -> str:
     except CalorieQA.DoesNotExist:
         return user_prompt
 
-def handle_calorie_ai_interaction(user, section, user_prompt: str):
+def handle_calorie_ai_interaction(user, section, user_prompt: str) -> str:
     final_prompt = generate_calorie_prompt(user, user_prompt)
     response = OpenAIClient.generate_response(final_prompt)
     
@@ -30,7 +30,7 @@ def handle_calorie_ai_interaction(user, section, user_prompt: str):
     PromptHistory.objects.create(
         user=user,
         section=section,
-        prompt=final_prompt,
+        prompt=user_prompt,
         response=response
     )
     return response
