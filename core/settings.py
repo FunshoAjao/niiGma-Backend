@@ -30,7 +30,8 @@ INSTALLED_APPS = [
 
 SYSTEM_APP = [
     'accounts',
-    'calories'
+    'calories',
+    'symptoms',
 ]
 
 THIRD_PARTY_APP = [

@@ -17,8 +17,7 @@ logger = logging.getLogger(__name__)
 class CalorieViewSet(viewsets.ModelViewSet):
     queryset = CalorieQA.objects.all().order_by('-created_at')
     serializer_class = CalorieSerializer
-    permission_classes = [AllowAny]
-    authentication_classes = []
+    permission_classes = [IsAuthenticated]
 
     def get_paginated_response(self, data):
         return Response({
@@ -82,13 +81,13 @@ class CalorieViewSet(viewsets.ModelViewSet):
     @action(
         methods=["post"],
         detail=False,
-        url_path="ai",
-        permission_classes=[AllowAny],
+        url_path="ai_prompt",
+        permission_classes=[IsAuthenticated],
         serializer_class = CalorieAISerializer
     )
-    def ai(self, request, *args, **kwargs):
+    def ai_prompt(self, request, *args, **kwargs):
         logger.info("Ai about to be triggered")
-
+        
         serializer = CalorieAISerializer(data=request.data)
         if not serializer.is_valid():
             logger.error(f"Validation error occurred: {serializer.errors}")

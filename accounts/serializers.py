@@ -17,7 +17,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             "id", "email", "password", "first_name", "last_name",
             "goals", "date_of_birth", "height", "wellness_status", "referral_source", "allow_push_notifications", "allow_ovulation_tracker", 
-            "is_active", "last_login", "is_superuser", "is_staff", "current_weight", "goal_weight", "profile_picture",
+            "is_active", "last_login", "is_superuser", "is_staff", "profile_picture",
             "account_verified", "account_verified_at", "created_at", "updated_at", "has_completed_onboarding"
         ]
         read_only_fields = [

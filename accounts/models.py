@@ -61,8 +61,6 @@ class User(AbstractBaseUser, PermissionsMixin):
     updated_at = models.DateTimeField(auto_now=True)
     date_of_birth = models.DateTimeField(null=True, blank=True)
     height = models.FloatField(null=True, blank=True)
-    current_weight = models.FloatField(null=True, blank=True)
-    goal_weight = models.FloatField(null=True, blank=True)
 
     wellness_status = models.CharField(max_length=100, null=True, blank=True)  # ["Healthy", "Sick", "Injured"]
     referral_source = models.CharField(max_length=100, null=True, blank=True)

@@ -6,8 +6,11 @@ def generate_calorie_prompt(user, user_prompt: str) -> str:
     try:
         qa = CalorieQA.objects.get(user=user)
         base_context = (
-            f"My goal is to {qa.goal}. I weigh {qa.weight} lbs and aim for {qa.goal_weight} lbs. "
+            f"My goal is to {qa.goal}. I weigh {qa.current_weight} lbs and aim for {qa.goal_weight} lbs. "
             f"My activity level is {qa.activity_level}."
+            f"My eating style  preference is {qa.eating_style}."
+            f"I would like to receive reminders about {qa.reminder}."
+            f"Allow smart food suggestions: {qa.allow_smart_food_suggestions}."
         )
         full_prompt = f"{base_context}\n\nUser: {user_prompt}"
         return full_prompt

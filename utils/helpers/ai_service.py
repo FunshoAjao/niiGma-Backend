@@ -17,4 +17,5 @@ class OpenAIClient:
             )
             return response['choices'][0]['message']['content']
         except Exception as e:
+            print(f"Error generating response: {str(e)}")
             return f"Error: {str(e)}"

@@ -31,7 +31,6 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all().order_by('-created_at')
     serializer_class = UserSerializer
     permission_classes = [AllowAny]
-    authentication_classes = []
 
     def get_paginated_response(self, data):
         return Response({
@@ -378,7 +377,7 @@ class UserViewSet(viewsets.ModelViewSet):
     @action(
         methods=["post"],
         detail=False,
-        url_path="refresh",
+        url_path="refresh_token",
         permission_classes=[AllowAny],
     )
     def refresh_token(self, request, *args, **kwargs):
@@ -421,3 +420,23 @@ class PromptHistoryView(ListAPIView):
         if section:
             queryset = queryset.filter(section=section)
         return queryset
+    
+    def get_paginated_response(self, data):
+        return Response({
+            'count': self.paginator.page.paginator.count,
+            'next': self.paginator.get_next_link(),
+            'previous': self.paginator.get_previous_link(),
+            'status': 'success',
+            'entity': data,
+            'message': ''
+        })
+
+    def get_paginated_response_for_none_records(self, data):
+        return Response({
+            'count': 0,
+            'next': None,
+            'previous': None,
+            'status': 'success',
+            'entity': data,
+            'message': 'No staff records found.'
+        })
