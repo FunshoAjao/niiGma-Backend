@@ -1,6 +1,7 @@
 from utils.helpers.ai_service import OpenAIClient
 from accounts.models import PromptHistory
 from ..models import CalorieQA
+from rest_framework import serializers
 
 def generate_calorie_prompt(user, user_prompt: str) -> str:
     try:
@@ -20,7 +21,12 @@ def generate_calorie_prompt(user, user_prompt: str) -> str:
 def handle_calorie_ai_interaction(user, section, user_prompt: str):
     final_prompt = generate_calorie_prompt(user, user_prompt)
     response = OpenAIClient.generate_response(final_prompt)
-
+    
+    if not response:
+        raise serializers.ValidationError(
+            {"message": "Failed to get a response from the AI service.", "status": "failed"},
+            code=500
+        )
     PromptHistory.objects.create(
         user=user,
         section=section,
