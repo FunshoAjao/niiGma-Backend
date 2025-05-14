@@ -1,5 +1,6 @@
 from django.shortcuts import render
 from django.http import JsonResponse
+from rest_framework.generics import ListAPIView
 from django.middleware.csrf import get_token
 from django.utils import timezone
 from rest_framework import serializers
@@ -10,6 +11,7 @@ from rest_framework.decorators import action
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.core.cache import cache
+from accounts.choices import Section
 from accounts.services.tasks import send_otp
 from utils.helpers.services import generate_otp
 from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -18,8 +20,8 @@ from common.responses import CustomErrorResponse, CustomSuccessResponse
 from rest_framework.response import Response
 from rest_framework.views import status, APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from .models import User
-from .serializers import AccountPasswordResetSerializer, ChangePasswordSerializer, EmailSerializer, LoginSerializer, LogoutSerializer, PasswordResetConfirmationSerializer, UserSerializer, VerificationCodeSerializer
+from .models import PromptHistory, User
+from .serializers import AccountPasswordResetSerializer, ChangePasswordSerializer, EmailSerializer, LoginSerializer, LogoutSerializer, PasswordResetConfirmationSerializer, PromptHistorySerializer, UserSerializer, VerificationCodeSerializer
 from django.db import transaction
 import logging
 
@@ -244,6 +246,7 @@ class UserViewSet(viewsets.ModelViewSet):
                     "last_login": user.last_login.isoformat() if user.last_login else None,
                     "is_superuser": user.is_superuser,
                     "is_staff": user.is_staff,
+                    "age": user.age,
                     "account_verified": user.account_verified,
                     "account_verified_at": user.account_verified_at.isoformat() if user.account_verified_at else None,
                     "created_at": user.created_at.isoformat() if user.created_at else None,
@@ -405,3 +408,16 @@ class UserViewSet(viewsets.ModelViewSet):
                 message="Failed to refresh token",
                 status=500
             )
+            
+class PromptHistoryView(ListAPIView):
+    serializer_class = PromptHistorySerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        section = self.request.query_params.get("section")
+        if section not in Section and section is not None:
+            return CustomErrorResponse(message="Please enter a valid section")
+        queryset = PromptHistory.objects.filter(user=self.request.user)
+        if section:
+            queryset = queryset.filter(section=section)
+        return queryset

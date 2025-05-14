@@ -1,9 +1,11 @@
+from datetime import date
 from tkinter import CENTER
 import uuid
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 
-from accounts.choices import Gender
+from accounts.choices import Gender, Section
+from common.models import BaseModel
 
 class UserManager(BaseUserManager):
     use_in_migrations = True
@@ -59,6 +61,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     updated_at = models.DateTimeField(auto_now=True)
     date_of_birth = models.DateTimeField(null=True, blank=True)
     height = models.FloatField(null=True, blank=True)
+    current_weight = models.FloatField(null=True, blank=True)
+    goal_weight = models.FloatField(null=True, blank=True)
 
     wellness_status = models.CharField(max_length=100, null=True, blank=True)  # ["Healthy", "Sick", "Injured"]
     referral_source = models.CharField(max_length=100, null=True, blank=True)
@@ -66,6 +70,10 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     has_completed_onboarding = models.BooleanField(default=False)
     onboarding_completed_at = models.DateTimeField(null=True, blank=True)
+    
+    allow_push_notifications = models.BooleanField(default=False)
+    allow_ovulation_tracker = models.BooleanField(default=False)
+    profile_picture = models.ImageField(upload_to='profile_pictures/', null=True, blank=True)
     
     objects = UserManager()
 
@@ -76,6 +84,15 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     class Meta:
         ordering = ("-created_at",)
+        
+    @property
+    def age(self):
+        if not self.date_of_birth:
+            return None
+        today = date.today()
+        dob = self.date_of_birth.date()
+        return today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+
 
     def __str__(self):
         return self.email
@@ -84,3 +101,13 @@ class User(AbstractBaseUser, PermissionsMixin):
         if self.email:
             self.email = self.email.lower().strip()
         super().save(*args, **kwargs)
+        
+
+class PromptHistory(BaseModel):
+    user = models.ForeignKey(User, on_delete=models.CASCADE) 
+    section = models.CharField(choices=Section, max_length=50)
+    prompt = models.TextField()
+    response = models.TextField()
+
+    class Meta:
+        ordering = ['-created_at']

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User
+from .models import PromptHistory, User
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -16,8 +16,8 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             "id", "email", "password", "first_name", "last_name",
-            "goals", "date_of_birth", "height", "wellness_status", "referral_source",
-            "is_active", "last_login", "is_superuser", "is_staff",
+            "goals", "date_of_birth", "height", "wellness_status", "referral_source", "allow_push_notifications", "allow_ovulation_tracker", 
+            "is_active", "last_login", "is_superuser", "is_staff", "current_weight", "goal_weight", "profile_picture",
             "account_verified", "account_verified_at", "created_at", "updated_at", "has_completed_onboarding"
         ]
         read_only_fields = [
@@ -103,3 +103,8 @@ class ChangePasswordSerializer(serializers.Serializer):
 class PasswordResetConfirmationSerializer(VerificationCodeSerializer):
     password = serializers.CharField(required=True)
 
+
+class PromptHistorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PromptHistory
+        fields = '__all__'

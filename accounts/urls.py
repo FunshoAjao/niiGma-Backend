@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import UserViewSet
+from .views import PromptHistoryView, UserViewSet
 from rest_framework.routers import DefaultRouter
 from rest_framework import routers
 
@@ -7,7 +7,7 @@ from rest_framework import routers
 router = DefaultRouter()
 
 urlpatterns = [
-    
+    path('prompt_history/', PromptHistoryView.as_view(), name='prompt_history'),
 ]
 
 # Register ViewSets

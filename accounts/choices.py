@@ -7,3 +7,8 @@ class Gender(models.TextChoices):
     PREFER_NOT_TO_SAY = "prefer_not_to_say", "Prefer not to say"
     Others = "others", "Others"
     
+class Section(models.TextChoices):
+    CALORIES = "calories", "Calories"
+    OVULATION = "ovulation", "Ovulation",
+    SYMPTOM_TRACKER = "symptom_tracker", "Symptom_Checker"
+    

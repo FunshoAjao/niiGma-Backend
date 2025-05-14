@@ -30,6 +30,7 @@ INSTALLED_APPS = [
 
 SYSTEM_APP = [
     'accounts',
+    'calories'
 ]
 
 THIRD_PARTY_APP = [
@@ -175,6 +176,8 @@ SPECTACULAR_SETTINGS = {
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
 }
+
+OPENAI_API_KEY = config("OPENAI_API_KEY")
 
 
 # Redis Configuration
