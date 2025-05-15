@@ -1,9 +1,10 @@
 from datetime import date
 from django.shortcuts import render
 from accounts.choices import Section
-from calories.services.tasks import generate_suggested_meals, generate_suggested_meals_for_the_day, handle_calorie_ai_interaction
+from calories.services.tasks import compare_logged_vs_suggested, estimate_nutrition_with_ai, generate_suggested_meals, generate_suggested_meals_for_the_day, handle_calorie_ai_interaction
 from common.responses import CustomErrorResponse, CustomSuccessResponse
 from rest_framework.views import status, APIView
+from django.utils import timezone
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework import viewsets
 from .models import *
@@ -140,7 +141,7 @@ class CalorieViewSet(viewsets.ModelViewSet):
     )
     def daily_meal_plan(self, request, day, *args, **kwargs):
         user = request.user
-        day = day or date.today()
+        day = day or timezone.now().date()
         try: 
             goal = CalorieQA.objects.get(user=user)
         except CalorieQA.DoesNotExist:
@@ -151,7 +152,8 @@ class CalorieViewSet(viewsets.ModelViewSet):
             "date": str(day),
             "daily_target": goal.daily_calorie_target,
             "meals": [
-                {"meal_type": m.meal_type, "food_item": m.food_item, "calories": m.calories}
+                {"meal_type": m.meal_type, "food_item": m.food_item, "calories": m.calories, 
+                 "protein": m.protein, "carbs": m.carbs, "fats": m.fats}
                 for m in meals
             ]
         }
@@ -216,12 +218,51 @@ class CalorieViewSet(viewsets.ModelViewSet):
         serializer_class = LoggedMealSerializer
     )
     def log_meal(self, request, *args, **kwargs):
+        user = request.user
         serializer = LoggedMealSerializer(data=request.data)
         if not serializer.is_valid():
             return CustomErrorResponse(message=serializer.errors, status=400)
-        serializer.save(user=self.request.user)
+        
+        validated_data = serializer.validated_data
+        food_item = validated_data.get("food_item")
+        nutrition = estimate_nutrition_with_ai(food_item)
+        if not nutrition:
+            return CustomErrorResponse(message="Nutrition estimation failed", status=400)
+        LoggedMeal.objects.update_or_create(
+            user=user,
+            meal_type=validated_data['meal_type'],
+            date=validated_data.get("date", timezone.now().date()),
+            defaults={
+                'food_item': validated_data['food_item'],
+                **nutrition
+            }
+        )
 
         return CustomSuccessResponse(message="Meal logged successfully!", status=200)
+    
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name='day',
+                type=OpenApiTypes.DATE,
+                location=OpenApiParameter.PATH,
+                description='Date in YYYY-MM-DD format',
+                required=True
+            )
+        ]
+    )
+    @action(
+        methods=["get"],
+        detail=False,
+        url_path="get_logged_meal/(?P<day>[^/.]+)",
+        permission_classes=[IsAuthenticated]
+    )
+    def get_logged_meal(self, request, day, *args, **kwargs):
+        user = request.user
+        day = date.fromisoformat(day) or timezone.now().date()
+        meals = LoggedMeal.objects.filter(user=user, date=day)
+        serializer = LoggedMealSerializer(meals, many=True)
+        return CustomSuccessResponse(data=serializer.data, status=200)
     
     @extend_schema(
         parameters=[
@@ -243,7 +284,7 @@ class CalorieViewSet(viewsets.ModelViewSet):
     )
     def daily_comparison(self, request, day, *args, **kwargs):
         user = request.user
-        day = day or date.today()
+        day = day or timezone.now().date()
         goal = CalorieQA.objects.filter(user=user).last()
         if not goal:
             return CustomErrorResponse(message="No goal specified", status=404)
@@ -262,4 +303,27 @@ class CalorieViewSet(viewsets.ModelViewSet):
             "logged": sum_by_meal(logged),
         }
 
+        return CustomSuccessResponse(data=data, status=200)
+    
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name='day',
+                type=OpenApiTypes.DATE,
+                location=OpenApiParameter.PATH,
+                description='Date in YYYY-MM-DD format',
+                required=True
+            )
+        ]
+    )
+    @action(
+        methods=["get"],
+        detail=False,
+        url_path="compare_logged_vs_suggested/(?P<day>[^/.]+)",
+        permission_classes=[IsAuthenticated]
+    )
+    def compare_logged_vs_suggested(self, request, day, *args, **kwargs):
+        user = request.user
+        day = day or timezone.now().date()
+        data = compare_logged_vs_suggested(user, day)
         return CustomSuccessResponse(data=data, status=200)

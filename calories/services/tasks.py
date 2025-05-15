@@ -1,9 +1,52 @@
 from utils.helpers.ai_service import OpenAIClient
 from accounts.models import PromptHistory
-from ..models import CalorieQA, SuggestedMeal
+from ..models import MEAL_TYPES, CalorieQA, LoggedMeal, SuggestedMeal
 from rest_framework import serializers
 from datetime import timedelta
 from django.utils.timezone import now
+from datetime import date
+from django.db.models import Sum
+
+def compare_logged_vs_suggested(user, target_date: date)-> dict:
+    results = {}
+
+    for meal_type, _ in MEAL_TYPES:
+        # Get suggested meal
+        suggested = SuggestedMeal.objects.filter(
+            calorie_goal__user=user,
+            date__date=target_date,
+            meal_type=meal_type
+        ).aggregate(
+            total_calories=Sum('calories'),
+            total_protein=Sum('protein'),
+            total_carbs=Sum('carbs'),
+            total_fats=Sum('fats'),
+        )
+
+        # Get logged meal
+        logged = LoggedMeal.objects.filter(
+            user=user,
+            date=target_date,
+            meal_type=meal_type
+        ).aggregate(
+            total_calories=Sum('calories'),
+            total_protein=Sum('protein'),
+            total_carbs=Sum('carbs'),
+            total_fats=Sum('fats'),
+        )
+
+        results[meal_type] = {
+            "suggested": suggested,
+            "logged": logged,
+            "difference": {
+                "calories": (logged["total_calories"] or 0) - (suggested["total_calories"] or 0),
+                "protein": (logged["total_protein"] or 0) - (suggested["total_protein"] or 0),
+                "carbs": (logged["total_carbs"] or 0) - (suggested["total_carbs"] or 0),
+                "fats": (logged["total_fats"] or 0) - (suggested["total_fats"] or 0),
+            }
+        }
+
+    return results
 
 def generate_calorie_prompt(user, user_prompt: str) -> str:
     try:
@@ -239,3 +282,17 @@ def generate_suggested_meals_for_the_day(calorie_goal_id, date=None):
 
     # Bulk insert meals for the day
     SuggestedMeal.objects.bulk_create(meal_entries)
+    
+def estimate_nutrition_with_ai(description) -> dict:
+        prompt = f"""
+        Estimate the total calories, protein (g), fats (g), and carbs (g) for: {description}.
+        Provide a JSON response with keys: calories, protein, fats, carbs.
+        """
+        
+        nutrition = OpenAIClient.generate_daily_meal_plan(prompt)
+        return {
+                "calories": nutrition.get("calories", 0),
+                "protein": nutrition.get("protein", 0),
+                "fats": nutrition.get("fats", 0),
+                "carbs": nutrition.get("carbs", 0)
+            }

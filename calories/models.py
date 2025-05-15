@@ -60,6 +60,10 @@ class LoggedMeal(BaseModel):
     meal_type = models.CharField(max_length=10, choices=MEAL_TYPES)
     food_item = models.CharField(max_length=100)
     calories = models.IntegerField()
+    date = models.DateTimeField(blank=True, null=True)
+    protein = models.IntegerField(default=0)
+    carbs = models.IntegerField(default=0)
+    fats = models.IntegerField(default=0)
     
     class Meta:
         ordering = ("-created_at",)

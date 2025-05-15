@@ -25,4 +25,5 @@ class SuggestedMealSerializer(serializers.ModelSerializer):
 class LoggedMealSerializer(serializers.ModelSerializer):
     class Meta:
         model = LoggedMeal
-        fields = ["meal_type", "food_item", "calories"]
+        fields = ['meal_type', 'food_item', 'date', 'calories', 'protein', 'carbs', 'fats']
+        read_only_fields = ['calories', 'protein', 'carbs', 'fats']  
