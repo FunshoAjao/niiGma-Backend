@@ -1,9 +1,7 @@
 from datetime import date
-from django.shortcuts import render
 from accounts.choices import Section
-from calories.services.tasks import compare_logged_vs_suggested, estimate_nutrition_with_ai, extract_food_items_from_meal_source, generate_suggested_meals, generate_suggested_meals_for_the_day, handle_calorie_ai_interaction
+from calories.services.tasks import compare_logged_vs_suggested, extract_food_items_from_meal_source, generate_suggested_meals_for_the_day, handle_calorie_ai_interaction
 from common.responses import CustomErrorResponse, CustomSuccessResponse
-from rest_framework.views import status, APIView
 from django.utils import timezone
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework import viewsets
@@ -12,6 +10,8 @@ from .serializers import CalorieAISerializer, CalorieSerializer, LoggedMealSeria
 from rest_framework.response import Response
 from rest_framework.exceptions import NotFound
 from rest_framework.decorators import action
+from django.db.models import Sum, F, FloatField, Value
+from django.db.models.functions import Coalesce
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 import logging
@@ -160,25 +160,6 @@ class CalorieViewSet(viewsets.ModelViewSet):
 
         return CustomSuccessResponse(data=data, status=200)
     
-    @action(
-        methods=["get"],
-        detail=False,
-        url_path="suggested_meal_plan",
-        permission_classes=[IsAuthenticated],
-        serializer_class = CalorieAISerializer
-    )
-    def suggested_meal_plan(self, request, *args, **kwargs):
-        user = request.user
-        calorie = CalorieQA.objects.filter(user=user).last()
-        if not calorie:
-            return CustomErrorResponse(message="Calorie onboarding not done yet!", status=404)
-
-        generate_suggested_meals(calorie.id)
-        suggested_meals = SuggestedMeal.objects.filter(calorie_goal=calorie)
-        serializer = SuggestedMealSerializer(suggested_meals, many=True)
-        
-        return CustomSuccessResponse(data=serializer.data, status=200)
-    
     @extend_schema(
         parameters=[
             OpenApiParameter(
@@ -200,16 +181,19 @@ class CalorieViewSet(viewsets.ModelViewSet):
     def suggested_meal_plan_for_the_day(self, request, day, *args, **kwargs):
         user = request.user
         calorie = CalorieQA.objects.filter(user=user).last()
+
         if not calorie:
             return CustomErrorResponse(message="Calorie onboarding not done yet!", status=404)
 
-        generate_suggested_meals_for_the_day(calorie.id, day)
         suggested_meals = SuggestedMeal.objects.filter(calorie_goal=calorie, date=day)
+
+        if not suggested_meals.exists():
+            generate_suggested_meals_for_the_day(calorie.id, day)
+            suggested_meals = SuggestedMeal.objects.filter(calorie_goal=calorie, date=day)
+
         serializer = SuggestedMealSerializer(suggested_meals, many=True)
-        
         return CustomSuccessResponse(data=serializer.data, status=200)
-    
-    
+
     @action(
         methods=["post"],
         detail=False,
@@ -328,3 +312,82 @@ class CalorieViewSet(viewsets.ModelViewSet):
         day = day or timezone.now().date()
         data = compare_logged_vs_suggested(user, day)
         return CustomSuccessResponse(data=data, status=200)
+    
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name='day',
+                type=OpenApiTypes.DATE,
+                location=OpenApiParameter.PATH,
+                description='Date in YYYY-MM-DD format',
+                required=True
+            )
+        ]
+    )
+    @action(
+        methods=["get"],
+        detail=False,
+        url_path="get_nutrition_pie_chart/(?P<day>[^/.]+)",
+        permission_classes=[IsAuthenticated]
+    )
+    def get_nutrition_pie_chart(self, request, day, *args, **kwargs):
+        user = request.user
+        today = day or timezone.now().date()
+        
+        meals = LoggedMeal.objects.filter(user=user, date=today)
+
+        total_calories = meals.aggregate(total=Coalesce(Sum('calories'), Value(0)))['total']
+    
+        try:
+            calorie = CalorieQA.objects.get(user=user)
+        except CalorieQA.DoesNotExist:
+            return CustomErrorResponse(message="Calorie onboarding not done yet!", status=404)
+        calorie_goal = calorie.daily_calorie_target
+
+        # Calories by meal type
+        meal_breakdown = meals.values('meal_type').annotate(
+            total_kcal=Sum('calories')
+        )
+        by_meal = [
+            {
+                "label": m['meal_type'].capitalize(),
+                "percentage": round((m['total_kcal'] / calorie_goal) * 100, 1) if calorie_goal else 0,
+                "kcal": m['total_kcal']
+            }
+            for m in meal_breakdown
+        ]
+
+        # Macro-nutrients
+        macros = meals.aggregate(
+            protein=Coalesce(Sum('protein'), Value(0)),
+            fats=Coalesce(Sum('fats'), Value(0)),
+            carbs=Coalesce(Sum('carbs'), Value(0))
+        )
+        total_macros = macros['protein'] + macros['fats'] + macros['carbs']
+        macros_percent = {
+            "protein": {
+                "percentage": round((macros['protein'] / total_macros) * 100, 1) if total_macros else 0,
+                "grams": round(macros['protein'], 1)
+            },
+            "fat": {
+                "percentage": round((macros['fats'] / total_macros) * 100, 1) if total_macros else 0,
+                "grams": round(macros['fats'], 1)
+            },
+            "carbs": {
+                "percentage": round((macros['carbs'] / total_macros) * 100, 1) if total_macros else 0,
+                "grams": round(macros['carbs'], 1)
+            },
+        }
+
+        return CustomSuccessResponse(data={
+            "date": str(today),
+            "calories": {
+                "goal": calorie_goal,
+                "consumed": total_calories,
+                "left": max(0, calorie_goal - total_calories),
+                "remaining":  calorie_goal - total_calories,
+                "by_meal": by_meal
+            },
+            "macros": macros_percent,
+            "health_insight": "Based on your calorie analysis you need to focus more eating..."
+        })
