@@ -1,7 +1,7 @@
 from datetime import date
 from django.shortcuts import render
 from accounts.choices import Section
-from calories.services.tasks import compare_logged_vs_suggested, estimate_nutrition_with_ai, generate_suggested_meals, generate_suggested_meals_for_the_day, handle_calorie_ai_interaction
+from calories.services.tasks import compare_logged_vs_suggested, estimate_nutrition_with_ai, extract_food_items_from_meal_source, generate_suggested_meals, generate_suggested_meals_for_the_day, handle_calorie_ai_interaction
 from common.responses import CustomErrorResponse, CustomSuccessResponse
 from rest_framework.views import status, APIView
 from django.utils import timezone
@@ -225,7 +225,8 @@ class CalorieViewSet(viewsets.ModelViewSet):
         
         validated_data = serializer.validated_data
         food_item = validated_data.get("food_item")
-        nutrition = estimate_nutrition_with_ai(food_item)
+        nutrition = extract_food_items_from_meal_source(validated_data.get("meal_source"), food_item)
+        
         if not nutrition:
             return CustomErrorResponse(message="Nutrition estimation failed", status=400)
         LoggedMeal.objects.update_or_create(

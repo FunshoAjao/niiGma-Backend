@@ -1,5 +1,7 @@
+from calories.serializers import MealSource
 from utils.helpers.ai_service import OpenAIClient
 from accounts.models import PromptHistory
+import requests
 from ..models import MEAL_TYPES, CalorieQA, LoggedMeal, SuggestedMeal
 from rest_framework import serializers
 from datetime import timedelta
@@ -283,6 +285,29 @@ def generate_suggested_meals_for_the_day(calorie_goal_id, date=None):
     # Bulk insert meals for the day
     SuggestedMeal.objects.bulk_create(meal_entries)
     
+    
+def extract_food_items_from_meal_source(meal_source, food_description=None) -> dict:
+    if meal_source == MealSource.Barcode:
+        barcode = meal_source.get("barcode")
+        food_item = get_food_by_barcode(barcode)
+        if food_item:
+            return {
+                "name": food_item["name"],
+                "calories": food_item["calories"],
+                "protein": food_item["protein"],
+                "carbs": food_item["carbs"],
+                "fat": food_item["fat"]
+            }
+            
+    elif meal_source == MealSource.Manual:
+        return estimate_nutrition_with_ai(food_description)
+    
+    elif meal_source == MealSource.Scanned:
+        return analyze_food_image(meal_source.get("scanned_image"))
+    
+    else: return {}
+    
+    
 def estimate_nutrition_with_ai(description) -> dict:
         prompt = f"""
         Estimate the total calories, protein (g), fats (g), and carbs (g) for: {description}.
@@ -296,3 +321,32 @@ def estimate_nutrition_with_ai(description) -> dict:
                 "fats": nutrition.get("fats", 0),
                 "carbs": nutrition.get("carbs", 0)
             }
+        
+def get_food_by_barcode(barcode)-> dict:
+    url = f"https://world.openfoodfacts.org/api/v0/product/{barcode}.json"
+    response = requests.get(url)
+    if response.status_code == 200:
+        product = response.json().get("product", {})
+        return {
+            "name": product.get("product_name", "Unknown Product"),
+            "calories": product.get("nutriments", {}).get("energy-kcal_100g", 0),
+            "protein": product.get("nutriments", {}).get("proteins_100g", 0),
+            "carbs": product.get("nutriments", {}).get("carbohydrates_100g", 0),
+            "fat": product.get("nutriments", {}).get("fat_100g", 0),
+        }
+    return {}
+
+def analyze_food_image(image_base64=None):
+    # 1. Send to Google Cloud Vision -> get labels
+    # 2. Send label to Nutritionix API to get calories
+    # Pseudocode due to API complexity
+    food_name = "grilled chicken"  # label from Vision
+    # Then call Nutritionix API to get nutrition info
+    return {
+        "name": food_name,
+        "calories": 300,
+        "protein": 25,
+        "carbs": 5,
+        "fat": 10,
+    }
+
