@@ -2,6 +2,12 @@ from django.db import models
 from accounts.models import User
 from common.models import BaseModel
 
+MEAL_TYPES = [
+        ("breakfast", "Breakfast"),
+        ("lunch", "Lunch"),
+        ("dinner", "Dinner")
+    ]
+
 class CalorieQA(BaseModel):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     goal = models.CharField(max_length=100)  # body goals
@@ -11,9 +17,52 @@ class CalorieQA(BaseModel):
     eating_style = models.CharField(max_length=400)
     reminder = models.CharField(max_length=400)
     allow_smart_food_suggestions = models.BooleanField(default=False)
+    goal_timeline = models.DateTimeField(blank=True, null=True)
     
     def __str__(self):
         return f'{self.user} calorie'
     
     class Meta:
         ordering = ("-created_at",)
+        
+    @property
+    def days_left(self):
+        return (self.goal_timeline - self.created_at).days
+
+    @property
+    def daily_calorie_target(self):
+        # Simplified: 7700 kcal = 1kg
+        weight_diff = self.goal_weight - self.current_weight
+        total_calories_needed = 7700 * abs(weight_diff)
+        days = self.days_left
+        return int(total_calories_needed / days) if days > 0 else 0
+
+class SuggestedMeal(BaseModel):
+    calorie_goal = models.ForeignKey(CalorieQA, on_delete=models.CASCADE)
+    date = models.DateTimeField()
+    meal_type = models.CharField(max_length=10, choices=MEAL_TYPES)
+    meal_name = models.CharField(max_length=200, blank=True, null=True)
+    food_item = models.CharField(max_length=100)
+    calories = models.IntegerField()
+    protein = models.IntegerField(default=0)
+    carbs = models.IntegerField(default=0)
+    fats = models.IntegerField(default=0)
+    
+    def __str__(self):
+        return f'{self.calorie_goal} suggested meal'
+
+    class Meta:
+        unique_together = ("calorie_goal", "created_at", "meal_type", "food_item")
+
+
+class LoggedMeal(BaseModel):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    meal_type = models.CharField(max_length=10, choices=MEAL_TYPES)
+    food_item = models.CharField(max_length=100)
+    calories = models.IntegerField()
+    
+    class Meta:
+        ordering = ("-created_at",)
+        
+    def __str__(self):
+        return f'{self.user} logged meal'

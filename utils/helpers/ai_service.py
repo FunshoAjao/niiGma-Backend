@@ -1,6 +1,7 @@
 from openai import OpenAI
 from rest_framework import serializers
 from django.conf import settings
+import json
 
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
@@ -20,3 +21,17 @@ class OpenAIClient:
                     {"message": f"Error: {str(e)}", "status":"failed"},
                     code=400
                 )
+
+    @staticmethod
+    def generate_daily_meal_plan(prompt):
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7,
+        )
+        try:
+            content = response.choices[0].message.content
+            return json.loads(content)
+        except Exception as e:
+            print("Error parsing meal plan:", e)
+            return None

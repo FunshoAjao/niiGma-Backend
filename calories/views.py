@@ -1,15 +1,18 @@
+from datetime import date
 from django.shortcuts import render
 from accounts.choices import Section
-from calories.services.tasks import handle_calorie_ai_interaction
+from calories.services.tasks import generate_suggested_meals, generate_suggested_meals_for_the_day, handle_calorie_ai_interaction
 from common.responses import CustomErrorResponse, CustomSuccessResponse
 from rest_framework.views import status, APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework import viewsets
 from .models import *
-from .serializers import CalorieAISerializer, CalorieSerializer
+from .serializers import CalorieAISerializer, CalorieSerializer, LoggedMealSerializer, SuggestedMealSerializer
 from rest_framework.response import Response
 from rest_framework.exceptions import NotFound
 from rest_framework.decorators import action
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 import logging
 
 logger = logging.getLogger(__name__)
@@ -116,3 +119,147 @@ class CalorieViewSet(viewsets.ModelViewSet):
         logger.info('Prompt and response generated for calorie successfully!')
 
         return CustomSuccessResponse(data=ai_response, message="Conversation loaded successfully!", status=201)
+    
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name='day',
+                type=OpenApiTypes.DATE,
+                location=OpenApiParameter.PATH,
+                description='Date in YYYY-MM-DD format',
+                required=True
+            )
+        ]
+    )
+    @action(
+        methods=["get"],
+        detail=False,
+        url_path="daily_meal_plan/(?P<day>[^/.]+)",
+        permission_classes=[IsAuthenticated],
+        serializer_class = CalorieAISerializer
+    )
+    def daily_meal_plan(self, request, day, *args, **kwargs):
+        user = request.user
+        day = day or date.today()
+        try: 
+            goal = CalorieQA.objects.get(user=user)
+        except CalorieQA.DoesNotExist:
+            return CustomErrorResponse(message="Calorie onboarding not done yet!", status=404)
+
+        meals = SuggestedMeal.objects.filter(calorie_goal=goal, date=day)
+        data = {
+            "date": str(day),
+            "daily_target": goal.daily_calorie_target,
+            "meals": [
+                {"meal_type": m.meal_type, "food_item": m.food_item, "calories": m.calories}
+                for m in meals
+            ]
+        }
+
+        return CustomSuccessResponse(data=data, status=200)
+    
+    @action(
+        methods=["get"],
+        detail=False,
+        url_path="suggested_meal_plan",
+        permission_classes=[IsAuthenticated],
+        serializer_class = CalorieAISerializer
+    )
+    def suggested_meal_plan(self, request, *args, **kwargs):
+        user = request.user
+        calorie = CalorieQA.objects.filter(user=user).last()
+        if not calorie:
+            return CustomErrorResponse(message="Calorie onboarding not done yet!", status=404)
+
+        generate_suggested_meals(calorie.id)
+        suggested_meals = SuggestedMeal.objects.filter(calorie_goal=calorie)
+        serializer = SuggestedMealSerializer(suggested_meals, many=True)
+        
+        return CustomSuccessResponse(data=serializer.data, status=200)
+    
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name='day',
+                type=OpenApiTypes.DATE,
+                location=OpenApiParameter.PATH,
+                description='Date in YYYY-MM-DD format',
+                required=True
+            )
+        ]
+    )
+    @action(
+        methods=["get"],
+        detail=False,
+        url_path="suggested_meal_plan_for_the_day/(?P<day>[^/.]+)",
+        permission_classes=[IsAuthenticated],
+        serializer_class = CalorieAISerializer
+    )
+    def suggested_meal_plan_for_the_day(self, request, day, *args, **kwargs):
+        user = request.user
+        calorie = CalorieQA.objects.filter(user=user).last()
+        if not calorie:
+            return CustomErrorResponse(message="Calorie onboarding not done yet!", status=404)
+
+        generate_suggested_meals_for_the_day(calorie.id, day)
+        suggested_meals = SuggestedMeal.objects.filter(calorie_goal=calorie, date=day)
+        serializer = SuggestedMealSerializer(suggested_meals, many=True)
+        
+        return CustomSuccessResponse(data=serializer.data, status=200)
+    
+    
+    @action(
+        methods=["post"],
+        detail=False,
+        url_path="log_meal",
+        permission_classes=[IsAuthenticated],
+        serializer_class = LoggedMealSerializer
+    )
+    def log_meal(self, request, *args, **kwargs):
+        serializer = LoggedMealSerializer(data=request.data)
+        if not serializer.is_valid():
+            return CustomErrorResponse(message=serializer.errors, status=400)
+        serializer.save(user=self.request.user)
+
+        return CustomSuccessResponse(message="Meal logged successfully!", status=200)
+    
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name='day',
+                type=OpenApiTypes.DATE,
+                location=OpenApiParameter.PATH,
+                description='Date in YYYY-MM-DD format',
+                required=True
+            )
+        ]
+    )
+    @action(
+        methods=["post"],
+        detail=False,
+        url_path="daily_comparison/(?P<day>[^/.]+)",
+        permission_classes=[IsAuthenticated],
+        serializer_class = LoggedMealSerializer
+    )
+    def daily_comparison(self, request, day, *args, **kwargs):
+        user = request.user
+        day = day or date.today()
+        goal = CalorieQA.objects.filter(user=user).last()
+        if not goal:
+            return CustomErrorResponse(message="No goal specified", status=404)
+
+        suggested = SuggestedMeal.objects.filter(calorie_goal=goal, date=day)
+        logged = LoggedMeal.objects.filter(user=user, date=day)
+
+        def sum_by_meal(meals):
+            return {meal_type: sum(m.calories for m in meals if m.meal_type == meal_type)
+                    for meal_type in ["breakfast", "lunch", "dinner"]}
+
+        data ={
+            "date": str(day),
+            "target_total": goal.daily_calorie_target,
+            "suggested": sum_by_meal(suggested),
+            "logged": sum_by_meal(logged),
+        }
+
+        return CustomSuccessResponse(data=data, status=200)
