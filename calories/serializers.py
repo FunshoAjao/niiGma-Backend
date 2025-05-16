@@ -60,11 +60,12 @@ class LoggedWorkoutSerializer(serializers.ModelSerializer):
             "id",
             "user",
             "date",
-            "workout_name",
+            "title",
+            "intensity",
             "description",
             "duration_minutes",
             "estimated_calories_burned",
             "created_at",
             "updated_at"
         ]
-        read_only_fields = ("created_at", "updated_at", "user")
+        read_only_fields = ("created_at", "updated_at", "user", "estimated_calories_burned")

@@ -95,9 +95,11 @@ class LoggedMeal(BaseModel):
 class LoggedWorkout(BaseModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     date = models.DateField()
-    workout_type = models.CharField(max_length=200)
+    title = models.CharField(max_length=200)
     duration_minutes = models.IntegerField()
-    calories_burned = models.IntegerField()
+    estimated_calories_burned = models.IntegerField()
+    intensity = models.CharField(max_length=10, choices=INTENSITY_CHOICES, default="low")
+    description = models.TextField(blank=True, null=True)
 
     class Meta:
         ordering = ("-created_at",)

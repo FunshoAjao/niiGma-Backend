@@ -6,7 +6,7 @@ from django.utils import timezone
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework import viewsets
 from .models import *
-from .serializers import CalorieAISerializer, CalorieSerializer, LoggedMealSerializer, SuggestedMealSerializer, SuggestedWorkoutSerializer
+from .serializers import CalorieAISerializer, CalorieSerializer, LoggedMealSerializer, LoggedWorkoutSerializer, SuggestedMealSerializer, SuggestedWorkoutSerializer
 from rest_framework.response import Response
 from rest_framework.exceptions import NotFound
 from rest_framework.decorators import action
@@ -264,11 +264,11 @@ class CalorieViewSet(viewsets.ModelViewSet):
         detail=False,
         url_path="log_work_out",
         permission_classes=[IsAuthenticated],
-        serializer_class = LoggedMealSerializer
+        serializer_class = LoggedWorkoutSerializer
     )
     def log_work_out(self, request, *args, **kwargs):
         user = request.user
-        serializer = LoggedWorkout(data=request.data)
+        serializer = LoggedWorkoutSerializer(data=request.data)
         if not serializer.is_valid():
             return CustomErrorResponse(message=serializer.errors, status=400)
         
@@ -280,8 +280,8 @@ class CalorieViewSet(viewsets.ModelViewSet):
         LoggedWorkout.objects.update_or_create(
             user=user,
             duration_minutes =validated_data['duration_minutes'],
-            calories_burned=worked_out_calories,
-            workout_type=validated_data['workout_type'],
+            estimated_calories_burned=worked_out_calories,
+            title=validated_data['title'],
             date=validated_data.get("date", timezone.now().date()),
             defaults={
                 **validated_data,
@@ -289,6 +289,30 @@ class CalorieViewSet(viewsets.ModelViewSet):
         )
 
         return CustomSuccessResponse(message="Workout logged successfully!", status=200)
+    
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name='day',
+                type=OpenApiTypes.DATE,
+                location=OpenApiParameter.PATH,
+                description='Date in YYYY-MM-DD format',
+                required=True
+            )
+        ]
+    )
+    @action(
+        methods=["get"],
+        detail=False,
+        url_path="get_logged_work_out/(?P<day>[^/.]+)",
+        permission_classes=[IsAuthenticated]
+    )
+    def get_logged_work_out(self, request, day, *args, **kwargs):
+        user = request.user
+        day = date.fromisoformat(day) or timezone.now().date()
+        meals = LoggedWorkout.objects.filter(user=user, date=day)
+        serializer = LoggedWorkoutSerializer(meals, many=True)
+        return CustomSuccessResponse(data=serializer.data, status=200)
     
     @extend_schema(
         parameters=[
