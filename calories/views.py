@@ -1,12 +1,12 @@
 from datetime import date
 from accounts.choices import Section
-from calories.services.tasks import compare_logged_vs_suggested, extract_food_items_from_meal_source, generate_suggested_meals_for_the_day, handle_calorie_ai_interaction
+from calories.services.tasks import compare_logged_vs_suggested, estimate_logged_workout_calories, extract_food_items_from_meal_source, generate_suggested_meals_for_the_day, generate_suggested_workout_with_ai, handle_calorie_ai_interaction
 from common.responses import CustomErrorResponse, CustomSuccessResponse
 from django.utils import timezone
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework import viewsets
 from .models import *
-from .serializers import CalorieAISerializer, CalorieSerializer, LoggedMealSerializer, SuggestedMealSerializer
+from .serializers import CalorieAISerializer, CalorieSerializer, LoggedMealSerializer, SuggestedMealSerializer, SuggestedWorkoutSerializer
 from rest_framework.response import Response
 from rest_framework.exceptions import NotFound
 from rest_framework.decorators import action
@@ -193,6 +193,40 @@ class CalorieViewSet(viewsets.ModelViewSet):
 
         serializer = SuggestedMealSerializer(suggested_meals, many=True)
         return CustomSuccessResponse(data=serializer.data, status=200)
+    
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name='day',
+                type=OpenApiTypes.DATE,
+                location=OpenApiParameter.PATH,
+                description='Date in YYYY-MM-DD format',
+                required=True
+            )
+        ]
+    )
+    @action(
+        methods=["get"],
+        detail=False,
+        url_path="suggested_work_out_for_the_day/(?P<day>[^/.]+)",
+        permission_classes=[IsAuthenticated],
+        serializer_class = CalorieAISerializer
+    )
+    def suggested_work_out_for_the_day(self, request, day, *args, **kwargs):
+        user = request.user
+        calorie = CalorieQA.objects.filter(user=user).last()
+
+        if not calorie:
+            return CustomErrorResponse(message="Calorie onboarding not done yet!", status=404)
+
+        suggested_work_out = SuggestedWorkout.objects.filter(calorie_goal=calorie, date=day)
+
+        if not suggested_work_out.exists():
+            generate_suggested_workout_with_ai(user, calorie.daily_calorie_target, day)
+            suggested_work_out = SuggestedWorkout.objects.filter(calorie_goal=calorie, date=day)
+
+        serializer = SuggestedWorkoutSerializer(suggested_work_out, many=True)
+        return CustomSuccessResponse(data=serializer.data, status=200)
 
     @action(
         methods=["post"],
@@ -224,6 +258,37 @@ class CalorieViewSet(viewsets.ModelViewSet):
         )
 
         return CustomSuccessResponse(message="Meal logged successfully!", status=200)
+    
+    @action(
+        methods=["post"],
+        detail=False,
+        url_path="log_work_out",
+        permission_classes=[IsAuthenticated],
+        serializer_class = LoggedMealSerializer
+    )
+    def log_work_out(self, request, *args, **kwargs):
+        user = request.user
+        serializer = LoggedWorkout(data=request.data)
+        if not serializer.is_valid():
+            return CustomErrorResponse(message=serializer.errors, status=400)
+        
+        validated_data = serializer.validated_data
+        worked_out_calories = estimate_logged_workout_calories(validated_data['title'], validated_data['duration_minutes'], user)
+        
+        if not worked_out_calories:
+            return CustomErrorResponse(message="Workout estimation failed", status=400)
+        LoggedWorkout.objects.update_or_create(
+            user=user,
+            duration_minutes =validated_data['duration_minutes'],
+            calories_burned=worked_out_calories,
+            workout_type=validated_data['workout_type'],
+            date=validated_data.get("date", timezone.now().date()),
+            defaults={
+                **validated_data,
+            }
+        )
+
+        return CustomSuccessResponse(message="Workout logged successfully!", status=200)
     
     @extend_schema(
         parameters=[
@@ -390,4 +455,51 @@ class CalorieViewSet(viewsets.ModelViewSet):
             },
             "macros": macros_percent,
             "health_insight": "Based on your calorie analysis you need to focus more eating..."
+        })
+        
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name='day',
+                type=OpenApiTypes.DATE,
+                location=OpenApiParameter.PATH,
+                description='Date in YYYY-MM-DD format',
+                required=True
+            )
+        ]
+    )
+    @action(
+        methods=["get"],
+        detail=False,
+        url_path="get_daily_summary/(?P<day>[^/.]+)",
+        permission_classes=[IsAuthenticated]
+    )
+    def get_daily_summary(self, request, day, *args, **kwargs):
+        user = request.user
+        target_date = date.fromisoformat(day) or timezone.now().date()
+        
+        suggested_meals = SuggestedMeal.objects.filter(calorie_goal__user=user, date=target_date)
+        logged_meals = LoggedMeal.objects.filter(user=user, date=target_date)
+
+        suggested_workout = SuggestedWorkout.objects.filter(calorie_goal__user=user, date=target_date).first()
+        logged_workouts = LoggedWorkout.objects.filter(user=user, date=target_date)
+
+        total_logged_meal_calories = logged_meals.aggregate(total=Sum('calories'))['total'] or 0
+        total_logged_burn = logged_workouts.aggregate(total=Sum('calories_burned'))['total'] or 0
+
+        return CustomSuccessResponse(
+            data={
+            "date": target_date,
+            "calorie_goal": user.calorie_qa.daily_calorie_target,
+            "meals": {
+                "suggested": suggested_meals.aggregate(total=Sum('calories'))['total'] or 0,
+                "logged": total_logged_meal_calories,
+                "difference": total_logged_meal_calories - (user.calorie_qa.daily_calorie_target or 0)
+            },
+            "workout": {
+                "suggested": suggested_workout.estimated_calories_burned if suggested_workout else 0,
+                "logged": total_logged_burn,
+                "difference": total_logged_burn - (suggested_workout.estimated_calories_burned if suggested_workout else 0)
+            },
+            "net_calories": total_logged_meal_calories - total_logged_burn
         })

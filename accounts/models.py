@@ -73,6 +73,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     allow_ovulation_tracker = models.BooleanField(default=False)
     profile_picture = models.ImageField(upload_to='profile_pictures/', null=True, blank=True)
     
+    country = models.CharField(max_length=100, default="Canada")
+    
     objects = UserManager()
 
     USERNAME_FIELD = 'email'

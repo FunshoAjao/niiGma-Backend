@@ -2,7 +2,7 @@ from calories.serializers import MealSource
 from utils.helpers.ai_service import OpenAIClient
 from accounts.models import PromptHistory
 import requests
-from ..models import MEAL_TYPES, CalorieQA, LoggedMeal, SuggestedMeal
+from ..models import MEAL_TYPES, CalorieQA, LoggedMeal, SuggestedMeal, SuggestedWorkout
 from rest_framework import serializers
 from datetime import timedelta
 from django.utils.timezone import now
@@ -128,6 +128,7 @@ def build_meal_prompt(calorie_goal, date):
         User's age: {getattr(calorie_goal.user, 'age', 'Unknown')}
         User's weight: {calorie_goal.current_weight or 'Unknown'}
         User's goal weight: {calorie_goal.goal_weight or 'Unknown'}
+        User's current country: {calorie_goal.user.country or 'Unknown'}
 
         Suggest a detailed meal plan for:
         - Breakfast
@@ -172,8 +173,45 @@ def build_meal_prompt(calorie_goal, date):
         ]
     """
 
+def build_suggested_workout_prompt(user, calorie_target, date):
+    return f"""
+        You are a fitness coach helping users meet their daily calorie burn targets through simple workout routines.
+
+        Today's date is {date}.
+
+        The user has a calorie goal to burn approximately **{calorie_target} kcal** today through physical activity.
+
+        Please suggest **one effective workout routine** that fits the user's profile:
+        - Age: {user.age if hasattr(user, 'age') else "Unknown"}
+        - Fitness Level: {user.calorie_qa.activity_level}
+        - Goal: {user.calorie_qa.goal}
+        - Available equipment: None (assume home-friendly workout)
+        - Preferred workout duration: 30–45 minutes (can be adjusted)
+
+        Provide:
+        - **Workout name**
+        - **Short description**
+        - **Estimated duration (in minutes)**
+        - **Estimated calories burned**
+
+        Respond in the following JSON format:
+
+        {{
+        "workout_name": "Full-Body HIIT Circuit",
+        "description": "A high-intensity interval training session including jumping jacks, burpees, mountain climbers, and squats, performed in circuits.",
+        "duration_minutes": 35,
+        "estimated_calories_burned": 420
+        "duration_minutes": 35,
+        "intensity": --> INTENSITY_CHOICES = [
+            ("low", "Low"),
+            ("medium", "Medium"),
+            ("high", "High"),
+        ]
+        }}
+    """
+
     
-def generate_daily_meal_plan(user_profile, calorie_goal, date):
+def generate_daily_meal_plan(calorie_goal, date):
     prompt = build_meal_prompt(calorie_goal, date)
     response = OpenAIClient.generate_daily_meal_plan(prompt)
     if response is None:
@@ -250,7 +288,7 @@ def generate_suggested_meals_for_the_day(calorie_goal_id, date=None):
         return SuggestedMeal.objects.filter(calorie_goal=calorie_goal, date=date)
 
     # Call AI-based suggestion
-    meals = generate_daily_meal_plan(calorie_goal.user, calorie_goal, date)
+    meals = generate_daily_meal_plan(calorie_goal, date)
 
     meal_entries = []
 
@@ -322,6 +360,45 @@ def estimate_nutrition_with_ai(description) -> dict:
                 "carbs": nutrition.get("carbs", 0)
             }
         
+def generate_suggested_workout_with_ai(user, calorie_target, date):
+    prompt = build_suggested_workout_prompt(user, calorie_target, date)
+    workout_calorie_data = OpenAIClient.generate_daily_meal_plan(prompt)
+    if workout_calorie_data is None:
+        raise serializers.ValidationError(
+            {"message": "Failed to get a response from the AI service.", "status": "failed"},
+            code=500
+        )
+    print("Workout data:", workout_calorie_data)
+    SuggestedWorkout.objects.update_or_create(
+            calorie_goal=user.calorie_qa,
+            date=date,
+            defaults={
+                "duration_minutes": workout_calorie_data["duration_minutes"],
+                "intensity": workout_calorie_data["intensity"],
+                "title": workout_calorie_data["workout_name"],
+                "description": workout_calorie_data["description"],
+                "estimated_calories_burned": workout_calorie_data["estimated_calories_burned"]
+            }
+        )
+    return  None
+
+def estimate_logged_workout_calories(workout_description, duration, user):
+    prompt = f"""
+        You are a fitness assistant. A user has performed the following activity:
+
+        - Description: "{workout_description}"
+        - Duration: {duration} minutes
+        - Age: {user.age if hasattr(user, 'age') else "Unknown"}
+        - Weight: {user.calorie_qa.current_weight} kg
+        - Activity level: {user.calorie_qa.activity_level}
+
+        Estimate how many calories they likely burned. Return a number (integer only), without units or extra text.
+    """
+    workout_estimated_calories = OpenAIClient.chat(prompt)
+    calories = int(workout_estimated_calories.strip())
+    return calories
+
+      
 def get_food_by_barcode(barcode)-> dict:
     url = f"https://world.openfoodfacts.org/api/v0/product/{barcode}.json"
     response = requests.get(url)

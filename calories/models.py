@@ -8,8 +8,14 @@ MEAL_TYPES = [
         ("dinner", "Dinner")
     ]
 
+INTENSITY_CHOICES = [
+        ("low", "Low"),
+        ("medium", "Medium"),
+        ("high", "High"),
+    ]
+
 class CalorieQA(BaseModel):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="calorie_qa")
     goal = models.CharField(max_length=100)  # body goals
     activity_level = models.CharField(max_length=100)
     current_weight = models.FloatField()
@@ -53,6 +59,21 @@ class SuggestedMeal(BaseModel):
 
     class Meta:
         unique_together = ("calorie_goal", "created_at", "meal_type", "food_item")
+        
+class SuggestedWorkout(BaseModel):
+    calorie_goal = models.ForeignKey(CalorieQA, on_delete=models.CASCADE)
+    date = models.DateTimeField()
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True, null=True)
+    estimated_calories_burned = models.IntegerField()
+    intensity = models.CharField(max_length=10, choices=INTENSITY_CHOICES)
+    duration_minutes = models.PositiveIntegerField()
+
+    class Meta:
+        unique_together = ("calorie_goal", "date")
+        
+    def __str__(self):
+        return f"{self.title} ({self.date})"
 
 
 class LoggedMeal(BaseModel):
@@ -70,3 +91,16 @@ class LoggedMeal(BaseModel):
         
     def __str__(self):
         return f'{self.user} logged meal'
+    
+class LoggedWorkout(BaseModel):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    date = models.DateField()
+    workout_type = models.CharField(max_length=200)
+    duration_minutes = models.IntegerField()
+    calories_burned = models.IntegerField()
+
+    class Meta:
+        ordering = ("-created_at",)
+
+    def __str__(self):
+        return f"{self.user}'s workout on {self.date}"

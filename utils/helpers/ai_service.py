@@ -35,3 +35,12 @@ class OpenAIClient:
         except Exception as e:
             print("Error parsing meal plan:", e)
             return None
+        
+    @staticmethod
+    def chat(prompt):
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7
+        )
+        return response.choices[0].message.content
