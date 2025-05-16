@@ -39,6 +39,7 @@ class SuggestedWorkoutSerializer(serializers.ModelSerializer):
             "title",
             "description",
             "duration_minutes",
+            "intensity",
             "estimated_calories_burned",
             "created_at",  # assuming BaseModel has this
             "updated_at"
