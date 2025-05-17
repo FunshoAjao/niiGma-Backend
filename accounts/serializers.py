@@ -111,3 +111,5 @@ class PromptHistorySerializer(serializers.ModelSerializer):
         
 class ChatWithAiSerializer(serializers.Serializer):
     user_prompt = serializers.CharField(required=True)
+    base_64_image = serializers.CharField(required=False, allow_blank=True)
+    text = serializers.CharField(required=False, allow_blank=True)

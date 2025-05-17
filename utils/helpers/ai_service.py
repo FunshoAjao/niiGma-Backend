@@ -44,3 +44,32 @@ class OpenAIClient:
             temperature=0.7
         )
         return response.choices[0].message.content
+    
+    @staticmethod
+    def chat_with_base64_image(base64_image: str, text: str = "", context: str = ""):
+        messages = [
+            {"role": "system", "content": f"You are a helpful fitness assistant. {context}"},
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": base64_image  # Must start with data:image/jpeg;base64,...
+                        }
+                    },
+                    {
+                        "type": "text",
+                        "text": text or "Please describe this meal or item."
+                    }
+                ]
+            }
+        ]
+
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=messages,
+            max_tokens=800
+        )
+
+        return response.choices[0].message.content

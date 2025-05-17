@@ -425,7 +425,9 @@ class UserViewSet(viewsets.ModelViewSet):
         validated_data = serializer.validated_data
         response = chat_with_ai(
             user,
-            validated_data.get("user_prompt")
+            validated_data.get("user_prompt"),
+            validated_data.get("base_64_image"),
+            validated_data.get("text"),
         )
         return CustomSuccessResponse(data=response, message="Chat with AI initiated successfully")
             

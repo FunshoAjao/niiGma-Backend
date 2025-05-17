@@ -108,25 +108,48 @@ def get_meal_split_from_ai(user_context, calorie_target):
             code=500
         )
         
-def chat_with_ai(user, user_context):
+def get_user_prompt(user, prompt)-> str:
     prompt = f"""
-    You are a helpful AI fitness and health assistant.
+        You are a helpful AI fitness and health assistant.
 
-    Here is the user's profile:
-    - Goal: {user.goals}
-    - Current Weight: {user} kg
-    - Current Height: {user.height} kg
-    - Wellnesss Status: {user.wellness_status}
-    - Country: {user.country}
-    - Age: {user.age}
+        Here is the user's profile:
+        - Goal: {user.goals}
+        - Current Weight: {user} kg
+        - Current Height: {user.height} kg
+        - Wellnesss Status: {user.wellness_status}
+        - Country: {user.country}
+        - Age: {user.age}
 
-    The user says:
-    "{user_context}"
+        The user says:
+        "{prompt}"
 
-    Based on the user's profile, respond helpfully and conversationally.
+        Based on the user's profile, respond helpfully and conversationally.
     """
+    return prompt
+        
+def chat_with_ai(user, user_context, base_64_image=None, text=""):
+    if base_64_image:
+        return chat_with_ai_with_base64(user, user_context, base_64_image, text)
+    prompt = get_user_prompt(user, user_context)
     # Call OpenAI here and parse the JSON result
     response = OpenAIClient.generate_response(prompt)
+    if not response:
+        raise serializers.ValidationError(
+            {"message": "Failed to get a response from the AI service.", "status": "failed"},
+            code=500
+        )
+    PromptHistory.objects.create(
+                user=user,
+                section=Section.NONE,
+                prompt=user_context,
+                response=response
+            )
+    return response
+
+def chat_with_ai_with_base64(user, user_context, base64_image,  text=""):
+    prompt = get_user_prompt(user, user_context)
+    
+    response = OpenAIClient.chat_with_base64_image(base64_image, text, prompt)
     if not response:
         raise serializers.ValidationError(
             {"message": "Failed to get a response from the AI service.", "status": "failed"},
