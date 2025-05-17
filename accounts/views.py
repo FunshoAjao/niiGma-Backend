@@ -423,11 +423,9 @@ class UserViewSet(viewsets.ModelViewSet):
         if not serializer.is_valid():
             return CustomErrorResponse(message=serializer.errors, status=400)
         validated_data = serializer.validated_data
-        calorie_qa = CalorieQA.objects.filter(user=user).first()
         response = chat_with_ai(
             user,
-            validated_data.get("user_prompt"),
-            calorie_qa
+            validated_data.get("user_prompt")
         )
         return CustomSuccessResponse(data=response, message="Chat with AI initiated successfully")
             

@@ -108,7 +108,7 @@ def get_meal_split_from_ai(user_context, calorie_target):
             code=500
         )
         
-def chat_with_ai(user, user_context, calorie_qa=None):
+def chat_with_ai(user, user_context):
     prompt = f"""
     You are a helpful AI fitness and health assistant.
 
@@ -119,9 +119,6 @@ def chat_with_ai(user, user_context, calorie_qa=None):
     - Wellnesss Status: {user.wellness_status}
     - Country: {user.country}
     - Age: {user.age}
-    - Activity Level: {calorie_qa.activity_level}
-    - Eating Style: {calorie_qa.eating_style}
-    - Wants Smart Suggestions: {"Yes" if calorie_qa.allow_smart_food_suggestions else "No"}
 
     The user says:
     "{user_context}"
