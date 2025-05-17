@@ -11,4 +11,5 @@ class Section(models.TextChoices):
     CALORIES = "calories", "Calories"
     OVULATION = "ovulation", "Ovulation",
     SYMPTOM_TRACKER = "symptom_tracker", "Symptom_Checker"
+    NONE = "none", "None"
     

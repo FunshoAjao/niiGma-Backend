@@ -108,3 +108,6 @@ class PromptHistorySerializer(serializers.ModelSerializer):
     class Meta:
         model = PromptHistory
         fields = '__all__'
+        
+class ChatWithAiSerializer(serializers.Serializer):
+    user_prompt = serializers.CharField(required=True)

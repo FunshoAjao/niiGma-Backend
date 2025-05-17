@@ -1,3 +1,4 @@
+from accounts.choices import Section
 from calories.serializers import MealSource
 from utils.helpers.ai_service import OpenAIClient
 from accounts.models import PromptHistory
@@ -106,6 +107,41 @@ def get_meal_split_from_ai(user_context, calorie_target):
             {"message": "Failed to get a response from the AI service.", "status": "failed"},
             code=500
         )
+        
+def chat_with_ai(user, user_context, calorie_qa=None):
+    prompt = f"""
+    You are a helpful AI fitness and health assistant.
+
+    Here is the user's profile:
+    - Goal: {user.goals}
+    - Current Weight: {user} kg
+    - Current Height: {user.height} kg
+    - Wellnesss Status: {user.wellness_status}
+    - Country: {user.country}
+    - Age: {user.age}
+    - Activity Level: {calorie_qa.activity_level}
+    - Eating Style: {calorie_qa.eating_style}
+    - Wants Smart Suggestions: {"Yes" if calorie_qa.allow_smart_food_suggestions else "No"}
+
+    The user says:
+    "{user_context}"
+
+    Based on the user's profile, respond helpfully and conversationally.
+    """
+    # Call OpenAI here and parse the JSON result
+    response = OpenAIClient.generate_response(prompt)
+    if not response:
+        raise serializers.ValidationError(
+            {"message": "Failed to get a response from the AI service.", "status": "failed"},
+            code=500
+        )
+    PromptHistory.objects.create(
+                user=user,
+                section=Section.NONE,
+                prompt=user_context,
+                response=response
+            )
+    return response
         
 def build_meal_prompt(calorie_goal, date):
     print("Building meal prompt...")

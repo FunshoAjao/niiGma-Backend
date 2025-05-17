@@ -13,6 +13,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.core.cache import cache
 from accounts.choices import Section
 from accounts.services.tasks import send_otp
+from calories.models import CalorieQA
+from calories.services.tasks import chat_with_ai
 from utils.helpers.services import generate_otp
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from .services.user import UserService
@@ -21,7 +23,7 @@ from rest_framework.response import Response
 from rest_framework.views import status, APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from .models import PromptHistory, User
-from .serializers import AccountPasswordResetSerializer, ChangePasswordSerializer, EmailSerializer, LoginSerializer, LogoutSerializer, PasswordResetConfirmationSerializer, PromptHistorySerializer, UserSerializer, VerificationCodeSerializer
+from .serializers import AccountPasswordResetSerializer, ChangePasswordSerializer, ChatWithAiSerializer, EmailSerializer, LoginSerializer, LogoutSerializer, PasswordResetConfirmationSerializer, PromptHistorySerializer, UserSerializer, VerificationCodeSerializer
 from django.db import transaction
 import logging
 
@@ -408,14 +410,35 @@ class UserViewSet(viewsets.ModelViewSet):
                 status=500
             )
             
+    @action(
+        methods=["post"],
+        detail=False,
+        url_path="chat_with_ai",
+        permission_classes=[IsAuthenticated],
+        serializer_class=ChatWithAiSerializer
+    )
+    def chat_with_ai(self, request, *args, **kwargs):
+        user = request.user
+        serializer = ChatWithAiSerializer(data=request.data)
+        if not serializer.is_valid():
+            return CustomErrorResponse(message=serializer.errors, status=400)
+        validated_data = serializer.validated_data
+        calorie_qa = CalorieQA.objects.filter(user=user).first()
+        response = chat_with_ai(
+            user,
+            validated_data.get("user_prompt"),
+            calorie_qa
+        )
+        return CustomSuccessResponse(data=response, message="Chat with AI initiated successfully")
+            
 class PromptHistoryView(ListAPIView):
     serializer_class = PromptHistorySerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         section = self.request.query_params.get("section")
-        if section not in Section and section is not None:
-            return CustomErrorResponse(message="Please enter a valid section")
+        if section is None:
+            section = Section.NONE
         queryset = PromptHistory.objects.filter(user=self.request.user)
         if section:
             queryset = queryset.filter(section=section)
@@ -440,3 +463,4 @@ class PromptHistoryView(ListAPIView):
             'entity': data,
             'message': 'No staff records found.'
         })
+    
