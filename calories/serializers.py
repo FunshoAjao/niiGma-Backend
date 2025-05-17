@@ -54,6 +54,7 @@ class LoggedMealSerializer(serializers.ModelSerializer):
         read_only_fields = ['calories', 'protein', 'carbs', 'fats']  
         
 class LoggedWorkoutSerializer(serializers.ModelSerializer):
+    steps = serializers.IntegerField(required=False)
     class Meta:
         model = LoggedWorkout
         fields = [
@@ -66,6 +67,7 @@ class LoggedWorkoutSerializer(serializers.ModelSerializer):
             "duration_minutes",
             "estimated_calories_burned",
             "created_at",
-            "updated_at"
+            "updated_at",
+            "steps"
         ]
         read_only_fields = ("created_at", "updated_at", "user", "estimated_calories_burned")

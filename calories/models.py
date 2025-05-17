@@ -14,12 +14,18 @@ INTENSITY_CHOICES = [
         ("high", "High"),
     ]
 
+WEIGHT_UNITS = [
+    ("kg", "Kilograms"),
+    ("lb", "Pounds")
+]
+
 class CalorieQA(BaseModel):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="calorie_qa")
     goal = models.CharField(max_length=100)  # body goals
     activity_level = models.CharField(max_length=100)
     current_weight = models.FloatField()
     goal_weight = models.FloatField()
+    weight_unit = models.CharField(max_length=5, choices=WEIGHT_UNITS, default="kg")
     eating_style = models.CharField(max_length=400)
     reminder = models.CharField(max_length=400)
     allow_smart_food_suggestions = models.BooleanField(default=False)
@@ -100,6 +106,7 @@ class LoggedWorkout(BaseModel):
     estimated_calories_burned = models.IntegerField()
     intensity = models.CharField(max_length=10, choices=INTENSITY_CHOICES, default="low")
     description = models.TextField(blank=True, null=True)
+    steps = models.IntegerField(blank=True, null=True)
 
     class Meta:
         ordering = ("-created_at",)

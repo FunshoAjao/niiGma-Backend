@@ -13,6 +13,7 @@ from rest_framework.decorators import action
 from django.db.models import Sum, F, FloatField, Value
 from django.db.models.functions import Coalesce
 from drf_spectacular.types import OpenApiTypes
+from django.db import transaction
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 import logging
 
@@ -236,28 +237,30 @@ class CalorieViewSet(viewsets.ModelViewSet):
         serializer_class = LoggedMealSerializer
     )
     def log_meal(self, request, *args, **kwargs):
-        user = request.user
-        serializer = LoggedMealSerializer(data=request.data)
-        if not serializer.is_valid():
-            return CustomErrorResponse(message=serializer.errors, status=400)
-        
-        validated_data = serializer.validated_data
-        food_item = validated_data.get("food_item")
-        nutrition = extract_food_items_from_meal_source(validated_data.get("meal_source"), food_item)
-        
-        if not nutrition:
-            return CustomErrorResponse(message="Nutrition estimation failed", status=400)
-        LoggedMeal.objects.update_or_create(
-            user=user,
-            meal_type=validated_data['meal_type'],
-            date=validated_data.get("date", timezone.now().date()),
-            defaults={
-                'food_item': validated_data['food_item'],
-                **nutrition
-            }
-        )
+        with transaction.atomic():
+            user = request.user
+            serializer = LoggedMealSerializer(data=request.data)
+            if not serializer.is_valid():
+                return CustomErrorResponse(message=serializer.errors, status=400)
+            
+            validated_data = serializer.validated_data
+            food_item = validated_data.get("food_item")
+            nutrition = extract_food_items_from_meal_source(validated_data.get("meal_source"), food_item)
+            
+            if not nutrition:
+                return CustomErrorResponse(message="Nutrition estimation failed", status=400)
+            print("Nutrition data:", nutrition)
+            LoggedMeal.objects.update_or_create(
+                user=user,
+                meal_type=validated_data['meal_type'],
+                date=validated_data.get("date", timezone.now().date()),
+                defaults={
+                    'food_item': validated_data['food_item'],
+                    **nutrition
+                }
+            )
 
-        return CustomSuccessResponse(message="Meal logged successfully!", status=200)
+            return CustomSuccessResponse(message="Meal logged successfully!", status=200)
     
     @action(
         methods=["post"],
@@ -267,28 +270,30 @@ class CalorieViewSet(viewsets.ModelViewSet):
         serializer_class = LoggedWorkoutSerializer
     )
     def log_work_out(self, request, *args, **kwargs):
-        user = request.user
-        serializer = LoggedWorkoutSerializer(data=request.data)
-        if not serializer.is_valid():
-            return CustomErrorResponse(message=serializer.errors, status=400)
-        
-        validated_data = serializer.validated_data
-        worked_out_calories = estimate_logged_workout_calories(validated_data['title'], validated_data['duration_minutes'], user)
-        
-        if not worked_out_calories:
-            return CustomErrorResponse(message="Workout estimation failed", status=400)
-        LoggedWorkout.objects.update_or_create(
-            user=user,
-            duration_minutes =validated_data['duration_minutes'],
-            estimated_calories_burned=worked_out_calories,
-            title=validated_data['title'],
-            date=validated_data.get("date", timezone.now().date()),
-            defaults={
-                **validated_data,
-            }
-        )
+        with transaction.atomic():
+            user = request.user
+            serializer = LoggedWorkoutSerializer(data=request.data)
+            if not serializer.is_valid():
+                return CustomErrorResponse(message=serializer.errors, status=400)
+            
+            validated_data = serializer.validated_data
+            worked_out_calories = estimate_logged_workout_calories(validated_data['title'], validated_data['duration_minutes'], 
+                                                                   validated_data['description'], user, validated_data['intensity'], validated_data['steps'])
+            
+            if not worked_out_calories:
+                return CustomErrorResponse(message="Workout estimation failed", status=400)
+            LoggedWorkout.objects.update_or_create(
+                user=user,
+                duration_minutes =validated_data['duration_minutes'],
+                estimated_calories_burned=worked_out_calories,
+                title=validated_data['title'],
+                date=validated_data.get("date", timezone.now().date()),
+                defaults={
+                    **validated_data,
+                }
+            )
 
-        return CustomSuccessResponse(message="Workout logged successfully!", status=200)
+            return CustomSuccessResponse(message="Workout logged successfully!", status=200)
     
     @extend_schema(
         parameters=[
@@ -509,7 +514,7 @@ class CalorieViewSet(viewsets.ModelViewSet):
         logged_workouts = LoggedWorkout.objects.filter(user=user, date=target_date)
 
         total_logged_meal_calories = logged_meals.aggregate(total=Sum('calories'))['total'] or 0
-        total_logged_burn = logged_workouts.aggregate(total=Sum('calories_burned'))['total'] or 0
+        total_logged_burn = logged_workouts.aggregate(total=Sum('estimated_calories_burned'))['total'] or 0
 
         return CustomSuccessResponse(
             data={

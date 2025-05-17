@@ -7,6 +7,13 @@ from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseU
 from accounts.choices import Gender, Section
 from common.models import BaseModel
 
+HEIGHT_UNITS = [
+    ("cm", "Centimeters"),
+    ("ft", "Feet"),
+    ("in", "Inches"),
+    ("m", "Meters"),
+]
+
 class UserManager(BaseUserManager):
     use_in_migrations = True
 
@@ -61,6 +68,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     updated_at = models.DateTimeField(auto_now=True)
     date_of_birth = models.DateTimeField(null=True, blank=True)
     height = models.FloatField(null=True, blank=True)
+    height_unit = models.CharField(max_length=5, choices=HEIGHT_UNITS, default="cm")
 
     wellness_status = models.CharField(max_length=100, null=True, blank=True)  # ["Healthy", "Sick", "Injured"]
     referral_source = models.CharField(max_length=100, null=True, blank=True)

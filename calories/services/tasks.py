@@ -55,7 +55,7 @@ def generate_calorie_prompt(user, user_prompt: str) -> str:
     try:
         qa = CalorieQA.objects.get(user=user)
         base_context = (
-            f"My goal is to {qa.goal}. I weigh {qa.current_weight} lbs and aim for {qa.goal_weight} lbs. "
+            f"My goal is to {qa.goal}. I weigh {qa.current_weight} lbs and aim for {qa.goal_weight} {qa.weight_unit}. "
             f"My activity level is {qa.activity_level}."
             f"I am about {qa.user.age} years old."
             f"My eating style  preference is {qa.eating_style}."
@@ -115,7 +115,7 @@ def get_user_prompt(user, prompt)-> str:
         Here is the user's profile:
         - Goal: {user.goals}
         - Current Weight: {user} kg
-        - Current Height: {user.height} kg
+        - Current Height: {user.height} {user.height_unit}
         - Wellnesss Status: {user.wellness_status}
         - Country: {user.country}
         - Age: {user.age}
@@ -184,6 +184,10 @@ def build_meal_prompt(calorie_goal, date):
         User's age: {getattr(calorie_goal.user, 'age', 'Unknown')}
         User's weight: {calorie_goal.current_weight or 'Unknown'}
         User's goal weight: {calorie_goal.goal_weight or 'Unknown'}
+        User's weight unit: {calorie_goal.weight_unit or 'Unknown'}
+        User's height: {getattr(calorie_goal.user, 'height', 'Unknown')}
+        User's height unit: {getattr(calorie_goal.user, 'height_unit', 'Unknown')}
+        User's wellness status: {calorie_goal.user.wellness_status or 'Unknown'}
         User's current country: {calorie_goal.user.country or 'Unknown'}
 
         Suggest a detailed meal plan for:
@@ -403,12 +407,25 @@ def extract_food_items_from_meal_source(meal_source, food_description=None) -> d
     
     
 def estimate_nutrition_with_ai(description) -> dict:
-        prompt = f"""
-        Estimate the total calories, protein (g), fats (g), and carbs (g) for: {description}.
-        Provide a JSON response with keys: calories, protein, fats, carbs.
-        """
-        
+        prompt = f"""Estimate the total calories, protein (g), fats (g), and carbs (g) 
+            for {description}.
+            Respond ONLY with a JSON object in the following format, without any explanation:
+
+            {{
+            "calories": 123,
+            "protein": 4,
+            "fats": 2,
+            "carbs": 25
+            }}
+            """
+      # Call OpenAI here and parse the JSON result
+
         nutrition = OpenAIClient.generate_daily_meal_plan(prompt)
+        if nutrition is None:
+            raise serializers.ValidationError(
+                {"message": "Failed to get a response from the AI service.", "status": "failed"},
+                code=500
+            )
         return {
                 "calories": nutrition.get("calories", 0),
                 "protein": nutrition.get("protein", 0),
@@ -438,15 +455,19 @@ def generate_suggested_workout_with_ai(user, calorie_target, date):
         )
     return  None
 
-def estimate_logged_workout_calories(workout_description, duration, user):
+def estimate_logged_workout_calories(workout_description, duration, description, user, intensity, steps=None):
     prompt = f"""
         You are a fitness assistant. A user has performed the following activity:
 
         - Description: "{workout_description}"
         - Duration: {duration} minutes
         - Age: {user.age if hasattr(user, 'age') else "Unknown"}
-        - Weight: {user.calorie_qa.current_weight} kg
+        - Weight: {user.calorie_qa.current_weight} {user.calorie_qa.weight_unit}
+        - Height: {user.height} {user.height_unit}
         - Activity level: {user.calorie_qa.activity_level}
+        - Number of steps: {steps if steps else "Unknown"}
+        - Description: {description}
+        - Intensity: {intensity}
 
         Estimate how many calories they likely burned. Return a number (integer only), without units or extra text.
     """
