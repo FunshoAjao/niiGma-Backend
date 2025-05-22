@@ -15,6 +15,7 @@ from accounts.choices import Section
 from accounts.services.tasks import send_otp
 from calories.models import CalorieQA
 from calories.services.tasks import chat_with_ai
+from reminders.services.tasks import send_push_notification
 from utils.helpers.services import generate_otp
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from .services.user import UserService
@@ -23,7 +24,7 @@ from rest_framework.response import Response
 from rest_framework.views import status, APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from .models import PromptHistory, User
-from .serializers import AccountPasswordResetSerializer, ChangePasswordSerializer, ChatWithAiSerializer, EmailSerializer, LoginSerializer, LogoutSerializer, PasswordResetConfirmationSerializer, PromptHistorySerializer, UserSerializer, VerificationCodeSerializer
+from .serializers import AccountPasswordResetSerializer, ChangePasswordSerializer, ChatWithAiSerializer, DeviceTokenSerializer, EmailSerializer, LoginSerializer, LogoutSerializer, PasswordResetConfirmationSerializer, PromptHistorySerializer, PushNotificationSerializer, UserSerializer, VerificationCodeSerializer
 from django.db import transaction
 import logging
 
@@ -206,6 +207,62 @@ class UserViewSet(viewsets.ModelViewSet):
         logger.info("Login completed successfully")
         return CustomSuccessResponse(data=data, message='Logged in successfully')
 
+    @action(
+        methods=["post"],
+        detail=False,
+        url_path="update_device_token",
+        permission_classes=[IsAuthenticated],
+        serializer_class=DeviceTokenSerializer
+    )
+    def update_device_token(self, request, *args, **kwargs):
+        with transaction.atomic():
+            data = request.data
+            serializer = DeviceTokenSerializer(data=data)
+            if not serializer.is_valid():
+                return CustomErrorResponse(message=serializer.errors, status=400)
+            validated_data = serializer.validated_data
+            user_service = UserService(user=request.user)
+            user, token = user_service.update_device_token(
+                validated_data['device_token'], validated_data['device_type'], request.user.email
+            )
+
+            data = {
+                "access": token.get("access"),
+                "refresh": token.get("refresh"),
+                "transporter": UserSerializer(user).data
+            }
+            return CustomSuccessResponse(data=data, message="Device token updated successfully", status=201)
+
+    @action(
+    methods=["post"],
+    detail=False,
+    url_path="test_push_notification",
+    serializer_class=PushNotificationSerializer,
+    permission_classes=[IsAuthenticated],
+    )
+    def test_push_notification(self, request, *args, **kwargs):
+        try:
+            user= request.user
+            serializer = PushNotificationSerializer(data=request.data)
+            if not serializer.is_valid():
+                return CustomErrorResponse(message=serializer.errors, status=400)
+            validated_data = serializer.validated_data
+            if not user.device_token or not user.device_type:
+                return CustomErrorResponse(message="Device token or type not found", status=400)
+            title = validated_data.get("title")
+            body = validated_data.get("body")
+            
+            send_push_notification(
+                title=title,
+                message=body,
+                device_type=user.device_type,
+                registration_token=user.device_token
+            )
+            return CustomSuccessResponse(message="", status=status.HTTP_200_OK)
+        except Exception as e:
+            print(e)
+            logger.error(f"Error sending push notification: {str(e)}")  
+            return CustomErrorResponse(message=e.args[0])
 
     @action(
     methods=["post"],

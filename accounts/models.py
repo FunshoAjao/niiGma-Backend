@@ -4,7 +4,7 @@ import uuid
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 
-from accounts.choices import Gender, Section
+from accounts.choices import DeviceType, Gender, Section
 from common.models import BaseModel
 
 HEIGHT_UNITS = [
@@ -82,6 +82,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     profile_picture = models.ImageField(upload_to='profile_pictures/', null=True, blank=True)
     
     country = models.CharField(max_length=100, default="Canada")
+    
+    device_token = models.TextField(null=True, blank=False)
+    device_type = models.CharField(default=DeviceType.Android, choices=DeviceType, max_length=50)
     
     objects = UserManager()
 

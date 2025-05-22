@@ -13,3 +13,7 @@ class Section(models.TextChoices):
     SYMPTOM_TRACKER = "symptom_tracker", "Symptom_Checker"
     NONE = "none", "None"
     
+class DeviceType(models.TextChoices):
+    Android = "android", "Android"
+    Web = "web", "Web"
+    Ios = "ios", "Ios"

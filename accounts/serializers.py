@@ -1,4 +1,6 @@
 from rest_framework import serializers
+
+from accounts.choices import DeviceType
 from .models import PromptHistory, User
 
 
@@ -114,3 +116,12 @@ class ChatWithAiSerializer(serializers.Serializer):
     user_prompt = serializers.CharField(required=True)
     base_64_image = serializers.CharField(required=False, allow_blank=True)
     text = serializers.CharField(required=False, allow_blank=True)
+    
+class PushNotificationSerializer(serializers.Serializer):
+    title = serializers.CharField(required=True)
+    message = serializers.CharField(required=True)
+    
+
+class DeviceTokenSerializer(serializers.Serializer):
+    device_token = serializers.CharField(required=True)
+    device_type = serializers.ChoiceField(choices=DeviceType, required=True)

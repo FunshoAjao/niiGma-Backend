@@ -32,6 +32,22 @@ class UserService:
             "refresh": str(refresh),
             "access": str(refresh.access_token),
         }
+        
+    @transaction.atomic
+    def update_device_token(self, device_token, device_type, email):
+        try:
+            self.user = User.objects.get(email=email)
+            
+        except ObjectDoesNotExist:
+            raise serializers.ValidationError(
+                {"message": "User does not exist", "status":"failed"},
+                code=400
+            )
+        self.user.device_token = device_token
+        self.user.device_type = device_type
+        self.user.save()
+        
+        return self.user, self.__get_tokens_for_user()
 
     @transaction.atomic
     def create_user(self, **kwargs):

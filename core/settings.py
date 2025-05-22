@@ -3,6 +3,8 @@ from decouple import config
 from pathlib import Path
 from datetime import timedelta
 import dj_database_url
+import firebase_admin
+from firebase_admin import credentials
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -34,6 +36,7 @@ SYSTEM_APP = [
     'symptoms',
     'ovulations',
     'mindspace',
+    'reminders',
 ]
 
 THIRD_PARTY_APP = [
@@ -220,3 +223,29 @@ if ENVIRONMENT == "prod":
         # see https://docs.sentry.io/platforms/python/data-management/data-collected/ for more info
         send_default_pii=True,
     )
+    
+# FCM Settings
+FIREBASE_SERVICE_ACCOUNT_KEY = {
+    "type": config("TYPE"),
+    "project_id": config("PROJECT_ID"),
+    "private_key_id": config("PRIVATE_KEY_ID"),
+    "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDgM/UPukAHgH/e\nbPnCADMjGLigifLvLovpD0+tpnbFfy02DVFzonX13xhKJAe4QXFGpXAfR1xZ7061\nh8ITtn1obPkr+rxSgN2R+GhpdErph4t8nVT3ZDrm/WdlYj5VfdVYHXWB0WCTzssR\nUoNm8tX7cMiUjvLupWHcgmriYTLCvk8EBLv/E9nB7SHUlShqCmuT/6gDLLV8bY03\naYZ9VqeHso7roX2IYJeoCCsxVx30hKD1TmH/OpgC4RRUFSpLkxEF9G1gZL855N8d\nZpezTZKIJ7RC7FEcFyIVKjd014ulxfGFmP7VIrsHr9WlOogIewRXNVVznx7UoGKg\nnbNpADtDAgMBAAECggEARA0BMQjjLmO+bBC/rjbJTrnOMEwuxJJoPRE8qgSAwGld\nm65nLqX9D+frQ3W0MiUK8Np+McBDM7kDNu5B5iHZ5rxM1SCB0Lj0h73SU0/M/Rz7\nJZPLmlt91WbM32T2bpSHEPvAEusuWS7HTDazU6gZcvxEpXLOIclo7rlXH+dItPrl\nFnWHe5eM1r/RIcAL9GdZxaflHHSoj3S3SXljGe5llltYNh5aGCV/KejMa6+VBRed\nlBZmV5TPP4FOfShvetW+Dw+UKn+csaEM7Sf6U01Y/sf62xLvvlRcacVu7e/ecXFJ\netUm+Vz85AXkUk0FuMzsoZmzYEqzFhwaAtno5xmsoQKBgQD3W78sSOmPKWqC0j3L\nUye+r9lAruh6ff4EQr6wda1ek9GwSfDzoshxWtO8TRW7AJAY1t0ABNtZHB4KLI6H\nuIdmZiklru49Hj3Odp4OtEZt+kWXO8VOit7qlYobJZYrxPR7Qb4YY30XquUjeP5p\nE2ieGJUTiHclmsc7kigkaTBeXQKBgQDoCR6eeKlVYGQLc/1Og+y8rpdp5geGWy69\nib0noZzVX/hcrq44K00AKf6OpbWqjNYtQ5w7jMlOL7Lz74gepU31aU8tNPDHYaPk\nWh75LQ2tOgNY24cIHE/PVMWhByZyV4eoCvAjJ9P9pE90CVDDZ+/JqufZzfEAyGa3\nKCXShn8mHwKBgG69KE0PJ2DsTb7bmMaaJ8T6vOx0YafVGA+YQf6F8GPTEaE2uSSZ\nz9rPqtM2P3BExD4akz4a7ohqShiL8hNYzWVOf0Vbl1TNYSY5fHFgy9cYoGcgXyjW\niw3CfN3CagSWXE2CFTSd9bbOz16eIGeyRLfikXr5MT4omOFWgZorbXgRAoGAfWUY\nR/nbQQljZ5EaTkkbMeiEaTVn0aMLQmDieT1sfR9tH+FCw5Ya+cC4EazZ3T5ZLIMC\nNmhiDb/XTN6gyDb7R2nO4RZgHM/Wezx8ypofbwMP9gBFHAv40Yn1d41eqKJG7Hhk\nyArpFISsb3/tRnyv6GNVAq651Ht4jvjCX+BRbG8CgYBsxN1Sack71gvGDjTjgDtz\nWXDZlAZCq09u9PI0TNFW6aBz9pNmOVykS4y147cIWG+kHdGraJCZiSQTNCnbJ0dH\nu69voIH5IQ6+S9MO9rR/5mMApRRItPAt2HCmVG4hqicfYq50bFnG+ngnmFU/vvY0\nulfnXXWm1MQAxCpN0QYf/g==\n-----END PRIVATE KEY-----\n", #config("PRIVATE_KEY").replace("\n", "\\n"),
+    "client_email": config("CLIENT_EMAIL"),
+    "client_id": config("CLIENT_ID"),
+    "auth_uri": config("AUTH_URI"),
+    "token_uri": config("TOKEN_URI"),
+    "auth_provider_x509_cert_url": config("AUTH_PROVIDER_X509_CERT_URL"),
+    "client_x509_cert_url": config("CLIENT_X509_CERT_URL"),
+}
+
+FIREBASE_CREDENTIALS = credentials.Certificate(FIREBASE_SERVICE_ACCOUNT_KEY)
+# FIREBASE_CREDENTIALS = credentials.Certificate('https://hauliin-bucket.ams3.cdn.digitaloceanspaces.com/hauliin-bucket/media/Backend-Credential-(FireBase)/hauliin-firebase-adminsdk-o83nv-f1c4fd1bf5.json')
+FCM_SERVER_KEY = config('FCM_SERVER_KEY')
+FCM_DJANGO_SETTINGS = {
+    "DEFAULT_FIREBASE_APP": firebase_admin.initialize_app(
+        credential=FIREBASE_CREDENTIALS
+    ),
+    "APP_VERBOSE_NAME": "",
+    "ONE_DEVICE_PER_USER": True,
+    "DELETE_INACTIVE_DEVICES": False,
+}

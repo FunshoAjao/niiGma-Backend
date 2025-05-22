@@ -91,6 +91,7 @@ class LoggedMeal(BaseModel):
     protein = models.IntegerField(default=0)
     carbs = models.IntegerField(default=0)
     fats = models.IntegerField(default=0)
+    image_url = models.URLField(blank=True, null=True)
     
     class Meta:
         ordering = ("-created_at",)
