@@ -14,7 +14,7 @@ from django.core.cache import cache
 from accounts.choices import Section
 from accounts.services.tasks import send_otp
 from calories.models import CalorieQA
-from calories.services.tasks import chat_with_ai
+from calories.services.tasks import CalorieAIAssistant
 from reminders.services.tasks import send_push_notification
 from utils.helpers.services import generate_otp
 from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -480,8 +480,7 @@ class UserViewSet(viewsets.ModelViewSet):
         if not serializer.is_valid():
             return CustomErrorResponse(message=serializer.errors, status=400)
         validated_data = serializer.validated_data
-        response = chat_with_ai(
-            user,
+        response = CalorieAIAssistant(user).chat_with_ai(
             validated_data.get("user_prompt"),
             validated_data.get("base_64_image"),
             validated_data.get("text"),

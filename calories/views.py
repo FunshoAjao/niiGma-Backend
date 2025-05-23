@@ -1,6 +1,6 @@
 from datetime import date
 from accounts.choices import Section
-from calories.services.tasks import compare_logged_vs_suggested, estimate_logged_workout_calories, extract_food_items_from_meal_source, generate_suggested_meals_for_the_day, generate_suggested_workout_with_ai, handle_calorie_ai_interaction
+from calories.services.tasks import CalorieAIAssistant
 from common.responses import CustomErrorResponse, CustomSuccessResponse
 from django.utils import timezone
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -108,7 +108,7 @@ class CalorieViewSet(viewsets.ModelViewSet):
     )
     def ai_prompt(self, request, *args, **kwargs):
         logger.info("Ai about to be triggered")
-        
+        user = request.user
         serializer = CalorieAISerializer(data=request.data)
         if not serializer.is_valid():
             logger.error(f"Validation error occurred: {serializer.errors}")
@@ -117,7 +117,7 @@ class CalorieViewSet(viewsets.ModelViewSet):
         validated_data = serializer.validated_data
         user_prompt = validated_data.get("prompt")
 
-        ai_response = handle_calorie_ai_interaction(request.user, Section.CALORIES, user_prompt)
+        ai_response = CalorieAIAssistant(user).handle_calorie_ai_interaction(Section.CALORIES, user_prompt)
         logger.info('Prompt and response generated for calorie successfully!')
 
         return CustomSuccessResponse(data=ai_response, message="Conversation loaded successfully!", status=201)
@@ -189,7 +189,7 @@ class CalorieViewSet(viewsets.ModelViewSet):
         suggested_meals = SuggestedMeal.objects.filter(calorie_goal=calorie, date=day)
 
         if not suggested_meals.exists():
-            generate_suggested_meals_for_the_day(calorie.id, day)
+            CalorieAIAssistant(user).generate_suggested_meals_for_the_day(calorie.id, day)
             suggested_meals = SuggestedMeal.objects.filter(calorie_goal=calorie, date=day)
 
         serializer = SuggestedMealSerializer(suggested_meals, many=True)
@@ -223,7 +223,7 @@ class CalorieViewSet(viewsets.ModelViewSet):
         suggested_work_out = SuggestedWorkout.objects.filter(calorie_goal=calorie, date=day)
 
         if not suggested_work_out.exists():
-            generate_suggested_workout_with_ai(user, calorie.daily_calorie_target, day)
+            CalorieAIAssistant(user).generate_suggested_workout_with_ai(calorie.daily_calorie_target, day)
             suggested_work_out = SuggestedWorkout.objects.filter(calorie_goal=calorie, date=day)
 
         serializer = SuggestedWorkoutSerializer(suggested_work_out, many=True)
@@ -245,7 +245,7 @@ class CalorieViewSet(viewsets.ModelViewSet):
             
             validated_data = serializer.validated_data
             food_item = validated_data.get("food_item")
-            nutrition = extract_food_items_from_meal_source(validated_data.get("meal_source"), food_item)
+            nutrition = CalorieAIAssistant(user).extract_food_items_from_meal_source(validated_data.get("meal_source"), food_item)
             
             if not nutrition:
                 return CustomErrorResponse(message="Nutrition estimation failed", status=400)
@@ -261,6 +261,29 @@ class CalorieViewSet(viewsets.ModelViewSet):
             )
 
             return CustomSuccessResponse(message="Meal logged successfully!", status=200)
+        
+    @action(
+        methods=["post"],
+        detail=False,
+        url_path="simulate_log_meal",
+        permission_classes=[IsAuthenticated],
+        serializer_class = LoggedMealSerializer
+    )
+    def simulate_log_meal(self, request, *args, **kwargs):
+        with transaction.atomic():
+            user = request.user
+            serializer = LoggedMealSerializer(data=request.data)
+            if not serializer.is_valid():
+                return CustomErrorResponse(message=serializer.errors, status=400)
+            
+            validated_data = serializer.validated_data
+            food_item = validated_data.get("food_item")
+            nutrition = CalorieAIAssistant(user).extract_food_items_from_meal_source(validated_data.get("meal_source"), food_item)
+            
+            if not nutrition:
+                return CustomErrorResponse(message="Nutrition estimation failed", status=400)
+
+            return CustomSuccessResponse(message="Meal logged successfully!", data=nutrition, status=200)
     
     @action(
         methods=["post"],
@@ -277,8 +300,8 @@ class CalorieViewSet(viewsets.ModelViewSet):
                 return CustomErrorResponse(message=serializer.errors, status=400)
             
             validated_data = serializer.validated_data
-            worked_out_calories = estimate_logged_workout_calories(validated_data['title'], validated_data['duration_minutes'], 
-                                                                   validated_data['description'], user, validated_data['intensity'], validated_data['steps'])
+            worked_out_calories = CalorieAIAssistant(user).estimate_logged_workout_calories(validated_data['title'], validated_data['duration_minutes'], 
+                                                                   validated_data['description'], validated_data['intensity'], validated_data['steps'])
             
             if not worked_out_calories:
                 return CustomErrorResponse(message="Workout estimation failed", status=400)
@@ -404,7 +427,7 @@ class CalorieViewSet(viewsets.ModelViewSet):
     def compare_logged_vs_suggested(self, request, day, *args, **kwargs):
         user = request.user
         day = day or timezone.now().date()
-        data = compare_logged_vs_suggested(user, day)
+        data = CalorieAIAssistant(user=user).compare_logged_vs_suggested(day)
         return CustomSuccessResponse(data=data, status=200)
     
     @extend_schema(
