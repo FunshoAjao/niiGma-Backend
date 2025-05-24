@@ -165,7 +165,7 @@ class CalorieAIAssistant:
             
     def chat_with_ai(self, user_context, base_64_image=None, text=""):
         if base_64_image:
-            return self.chat_with_ai_with_base64(self.user, user_context, base_64_image, text)
+            return self.chat_with_ai_with_base64(user_context, base_64_image, text)
         prompt = self.get_user_prompt(user_context)
         # Call OpenAI here and parse the JSON result
         response = OpenAIClient.generate_response(prompt)
