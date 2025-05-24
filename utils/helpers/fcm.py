@@ -51,6 +51,7 @@ class AndroidPushNotification(DeviceInterface):
             token=registration_token,
         )
         response = messaging.send(message)
+        print(f"Successfully sent Android push message: {response}")
         logger.info("Successfully sent Android push message: %s", response)
 
 

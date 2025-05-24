@@ -5,6 +5,8 @@ from common.responses import CustomErrorResponse, CustomSuccessResponse
 from django.utils import timezone
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework import viewsets
+
+from utils.helpers.services import clean_insight
 from .models import *
 from .serializers import CalorieAISerializer, CalorieSerializer, LoggedMealSerializer, LoggedWorkoutSerializer, SuggestedMealSerializer, SuggestedWorkoutSerializer
 from rest_framework.response import Response
@@ -256,6 +258,7 @@ class CalorieViewSet(viewsets.ModelViewSet):
                 date=validated_data.get("date", timezone.now().date()),
                 defaults={
                     'food_item': validated_data['food_item'],
+                    'number_of_servings': validated_data['number_of_servings'],
                     **nutrition
                 }
             )
@@ -495,7 +498,9 @@ class CalorieViewSet(viewsets.ModelViewSet):
                 "grams": round(macros['carbs'], 1)
             },
         }
-
+        insight = CalorieAIAssistant(user).generate_health_insight(calorie_goal, total_calories, macros_percent, today)
+        cleaned_insight = clean_insight(insight)
+        
         return CustomSuccessResponse(data={
             "date": str(today),
             "calories": {
@@ -506,7 +511,7 @@ class CalorieViewSet(viewsets.ModelViewSet):
                 "by_meal": by_meal
             },
             "macros": macros_percent,
-            "health_insight": "Based on your calorie analysis you need to focus more eating..."
+            "health_insight": cleaned_insight
         })
         
     @extend_schema(

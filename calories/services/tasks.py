@@ -488,6 +488,29 @@ class CalorieAIAssistant:
             "carbs": nutrition.get("carbs", 0),
         }
 
+    def generate_health_insight(self, calorie_goal, total_calories, macros_percent, date):
+        prompt = f"""
+        You are a fitness and nutrition expert.
+
+        Today is {date}. A user has the following nutrition summary:
+
+        - Calorie goal: {calorie_goal} kcal
+        - Calories consumed: {total_calories} kcal
+        - Macros percentage: {macros_percent}
+
+        Based on this, generate a short, helpful health insight (1-2 sentences) that encourages the user to make better food choices. Be supportive and practical. Avoid repeating the numbers exactly.
+
+        Example: "You’re doing great, but try to include more protein in your meals to support muscle repair."
+
+        Respond with only the insight sentence.
+        """
+
+        response = OpenAIClient.generate_response(prompt)
+        
+        if not response:
+            return "Unable to generate health insight at the moment."
+        return response
+
             
     def generate_suggested_workout_with_ai(self, calorie_target, date):
         prompt = self.build_suggested_workout_prompt(calorie_target, date)

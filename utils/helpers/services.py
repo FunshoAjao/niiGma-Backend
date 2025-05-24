@@ -9,6 +9,10 @@ import ssl
 from smtplib import SMTPException
 logger = logging.getLogger(__name__)
 from rest_framework import serializers
+import re
+
+def clean_insight(insight: str) -> str:
+    return re.sub(r'((^["\'])|(["\']$))', '', insight.strip())
 
 def send_template_email(template, email, subject, **context):
     logger.info("----------------Sending email for this user: {}".format(email))
