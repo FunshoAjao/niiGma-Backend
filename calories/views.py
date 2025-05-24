@@ -16,6 +16,8 @@ from django.db.models import Sum, F, FloatField, Value
 from django.db.models.functions import Coalesce
 from drf_spectacular.types import OpenApiTypes
 from django.db import transaction
+import django_filters
+from rest_framework.filters import SearchFilter, OrderingFilter
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 import logging
 
@@ -25,6 +27,10 @@ class CalorieViewSet(viewsets.ModelViewSet):
     queryset = CalorieQA.objects.all().order_by('-created_at')
     serializer_class = CalorieSerializer
     permission_classes = [IsAuthenticated]
+    filter_backends = [django_filters.rest_framework.DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['goal']
+    search_fields = ['user', 'goal']
+    ordering_fields = '__all__'
 
     def get_paginated_response(self, data):
         return Response({
@@ -247,11 +253,13 @@ class CalorieViewSet(viewsets.ModelViewSet):
             
             validated_data = serializer.validated_data
             food_item = validated_data.get("food_item")
-            nutrition = CalorieAIAssistant(user).extract_food_items_from_meal_source(validated_data.get("meal_source"), food_item)
+            nutrition = CalorieAIAssistant(user).extract_food_items_from_meal_source(
+                validated_data.get("meal_source"), validated_data['number_of_servings'], 
+                validated_data['measurement_unit'], food_item)
             
             if not nutrition:
                 return CustomErrorResponse(message="Nutrition estimation failed", status=400)
-            print("Nutrition data:", nutrition)
+            
             LoggedMeal.objects.update_or_create(
                 user=user,
                 meal_type=validated_data['meal_type'],
@@ -259,6 +267,7 @@ class CalorieViewSet(viewsets.ModelViewSet):
                 defaults={
                     'food_item': validated_data['food_item'],
                     'number_of_servings': validated_data['number_of_servings'],
+                    'measurement_unit': validated_data['measurement_unit'],
                     **nutrition
                 }
             )
@@ -368,6 +377,47 @@ class CalorieViewSet(viewsets.ModelViewSet):
         meals = LoggedMeal.objects.filter(user=user, date=day)
         serializer = LoggedMealSerializer(meals, many=True)
         return CustomSuccessResponse(data=serializer.data, status=200)
+    
+    
+    @action(
+        methods=["get"],
+        detail=False,
+        url_path="get_all_my_logged_meal",
+        permission_classes=[IsAuthenticated],
+        filterset_fields = ['created_at', 'date', 'meal_type', 'food_item', 'calories', 'protein', 'carbs', 'fats'],
+        filter_backends = [django_filters.rest_framework.DjangoFilterBackend, SearchFilter, OrderingFilter],
+        search_fields = ['date', 'user__id', 'meal_type', 'food_item', 'calories', 'protein', 'carbs', 'fats'],
+        ordering_fields = '__all__'
+    )
+    def get_all_my_logged_meal(self, request, *args, **kwargs):
+        user = request.user
+        meals = LoggedMeal.objects.filter(user=user).order_by('-created_at')
+        filtered_queryset = self.filter_queryset(meals)
+        page = self.paginate_queryset(filtered_queryset)
+        if page is None:
+            return self.get_paginated_response_for_none_records([])
+        serializer = LoggedMealSerializer(page, many=True)
+        return self.get_paginated_response(serializer.data)
+    
+    @action(
+        methods=["get"],
+        detail=False,
+        url_path="get_all_my_suggested_meal",
+        permission_classes=[IsAuthenticated],
+        filterset_fields = ['created_at', 'date', 'meal_type', 'meal_name', 'food_item', 'calories', 'protein', 'carbs', 'fats'],
+        filter_backends = [django_filters.rest_framework.DjangoFilterBackend, SearchFilter, OrderingFilter],
+        search_fields = ['date', 'calorie_goal__user__email', 'meal_type', 'meal_name', 'food_item', 'calories', 'protein', 'carbs', 'fats'],
+        ordering_fields = '__all__'
+    )
+    def get_all_my_suggested_meal(self, request, *args, **kwargs):
+        user = request.user
+        queryset = SuggestedMeal.objects.filter(calorie_goal__user=user).order_by('-created_at')
+        filtered_queryset = self.filter_queryset(queryset)
+        page = self.paginate_queryset(filtered_queryset)
+        if page is None:
+            return self.get_paginated_response_for_none_records([])
+        serializer = SuggestedMealSerializer(page, many=True)
+        return self.get_paginated_response(serializer.data)
     
     @extend_schema(
         parameters=[
@@ -533,8 +583,8 @@ class CalorieViewSet(viewsets.ModelViewSet):
     )
     def get_daily_summary(self, request, day, *args, **kwargs):
         user = request.user
-        target_date = date.fromisoformat(day) or timezone.now().date()
-        
+        target_date = date.fromisoformat(day) if day else timezone.now().date()
+
         suggested_meals = SuggestedMeal.objects.filter(calorie_goal__user=user, date=target_date)
         logged_meals = LoggedMeal.objects.filter(user=user, date=target_date)
 
@@ -544,19 +594,52 @@ class CalorieViewSet(viewsets.ModelViewSet):
         total_logged_meal_calories = logged_meals.aggregate(total=Sum('calories'))['total'] or 0
         total_logged_burn = logged_workouts.aggregate(total=Sum('estimated_calories_burned'))['total'] or 0
 
+        # Macro_nutrient totals from logged meals
+        macro_agg = logged_meals.aggregate(
+            protein=Sum('protein'),
+            fat=Sum('fats'),
+            carbs=Sum('carbs'),
+        )
+        total_protein = macro_agg['protein'] or 0
+        total_fat = macro_agg['fat'] or 0
+        total_carbs = macro_agg['carbs'] or 0
+
+        # Macro_nutrient goals
+        macros = user.calorie_qa.macro_nutrient_targets
+
         return CustomSuccessResponse(
             data={
-            "date": target_date,
-            "calorie_goal": user.calorie_qa.daily_calorie_target,
-            "meals": {
-                "suggested": suggested_meals.aggregate(total=Sum('calories'))['total'] or 0,
-                "logged": total_logged_meal_calories,
-                "difference": total_logged_meal_calories - (user.calorie_qa.daily_calorie_target or 0)
-            },
-            "workout": {
-                "suggested": suggested_workout.estimated_calories_burned if suggested_workout else 0,
-                "logged": total_logged_burn,
-                "difference": total_logged_burn - (suggested_workout.estimated_calories_burned if suggested_workout else 0)
-            },
-            "net_calories": total_logged_meal_calories - total_logged_burn
-        })
+                "date": target_date,
+                "calorie_goal": user.calorie_qa.daily_calorie_target,
+                "calories": {
+                    "consumed": total_logged_meal_calories,
+                    "goal": user.calorie_qa.daily_calorie_target,
+                    "left": max(user.calorie_qa.daily_calorie_target - total_logged_meal_calories, 0)
+                },
+                "meals": {
+                    "suggested": suggested_meals.aggregate(total=Sum('calories'))['total'] or 0,
+                    "logged": total_logged_meal_calories,
+                    "difference": total_logged_meal_calories - (user.calorie_qa.daily_calorie_target or 0)
+                },
+                "workout": {
+                    "suggested": suggested_workout.estimated_calories_burned if suggested_workout else 0,
+                    "logged": total_logged_burn,
+                    "difference": total_logged_burn - (suggested_workout.estimated_calories_burned if suggested_workout else 0)
+                },
+                "macro_nutrients": {
+                    "protein": {
+                        "logged": total_protein,
+                        "goal": macros["protein"]
+                    },
+                    "fat": {
+                        "logged": total_fat,
+                        "goal": macros["fat"]
+                    },
+                    "carbs": {
+                        "logged": total_carbs,
+                        "goal": macros["carbs"]
+                    },
+                },
+                "net_calories": total_logged_meal_calories - total_logged_burn
+            }
+        )

@@ -19,6 +19,12 @@ WEIGHT_UNITS = [
     ("lb", "Pounds")
 ]
 
+MEASUREMENT_UNITS = [
+    ("serving", "Serving"),
+    ("gram", "Gram"),
+    ("slice", "Slice"),
+]
+
 class CalorieQA(BaseModel):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="calorie_qa")
     goal = models.CharField(max_length=100)  # body goals
@@ -48,6 +54,25 @@ class CalorieQA(BaseModel):
         total_calories_needed = 7700 * abs(weight_diff)
         days = self.days_left
         return int(total_calories_needed / days) if days > 0 else 0
+    
+    @property
+    def macro_nutrient_targets(self):
+        calorie_target = self.daily_calorie_target
+
+        protein_pct = 0.25
+        fat_pct = 0.30
+        carbs_pct = 0.45
+
+        protein_target = int((calorie_target * protein_pct) / 4)  # 4 kcal/g
+        fat_target = int((calorie_target * fat_pct) / 9)          # 9 kcal/g
+        carbs_target = int((calorie_target * carbs_pct) / 4)      # 4 kcal/g
+
+        return {
+            "protein": protein_target,
+            "fat": fat_target,
+            "carbs": carbs_target,
+        }
+
 
 class SuggestedMeal(BaseModel):
     calorie_goal = models.ForeignKey(CalorieQA, on_delete=models.CASCADE)
@@ -92,6 +117,7 @@ class LoggedMeal(BaseModel):
     carbs = models.IntegerField(default=0)
     fats = models.IntegerField(default=0)
     image_url = models.URLField(blank=True, null=True)
+    measurement_unit = models.CharField(max_length=10, choices=MEASUREMENT_UNITS, default="serving")
     number_of_servings = models.PositiveBigIntegerField(default=1)
     
     class Meta:

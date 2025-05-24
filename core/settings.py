@@ -48,6 +48,7 @@ THIRD_PARTY_APP = [
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'django_redis',
+    'django_filters',
 ]
 
 INSTALLED_APPS += SYSTEM_APP + THIRD_PARTY_APP
@@ -120,6 +121,7 @@ REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     "EXCEPTION_HANDLER": "common.exception_handlers.custom_exception_handler",
     'DEFAULT_PAGINATION_CLASS': 'utils.pagination.CustomPageNumberPagination',
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
     'PAGE_SIZE': 10
 }
 

@@ -50,7 +50,7 @@ class LoggedMealSerializer(serializers.ModelSerializer):
     meal_source = serializers.ChoiceField(choices=MealSource.choices, default=MealSource.Manual)
     class Meta:
         model = LoggedMeal
-        fields = ['meal_type', 'food_item', 'date', 'calories', 'protein', 'carbs', 'fats', 'meal_source', 'image_url', 'number_of_servings']
+        fields = ['meal_type', 'food_item', 'date', 'calories', 'protein', 'carbs', 'fats', 'meal_source', 'image_url', 'number_of_servings', 'measurement_unit']
         read_only_fields = ['calories', 'protein', 'carbs', 'fats', 'id', 'user', 'created_at', 'updated_at']  
         
 class LoggedWorkoutSerializer(serializers.ModelSerializer):

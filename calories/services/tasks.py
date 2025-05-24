@@ -422,7 +422,7 @@ class CalorieAIAssistant:
         SuggestedMeal.objects.bulk_create(meal_entries)
         
         
-    def extract_food_items_from_meal_source(self, meal_source, food_description=None) -> dict:
+    def extract_food_items_from_meal_source(self, meal_source, serving_count=1, measurement_unit="serving", food_description=None) -> dict:
         if meal_source == MealSource.Barcode:
             barcode = meal_source.get("barcode")
             food_item = self.get_food_by_barcode(barcode)
@@ -436,7 +436,7 @@ class CalorieAIAssistant:
                 }
                 
         elif meal_source == MealSource.Manual:
-            return self.estimate_nutrition_with_ai(food_description)
+            return self.estimate_nutrition_with_ai(food_description, serving_count, measurement_unit)
         
         elif meal_source == MealSource.Scanned:
             return self.analyze_food_image(meal_source.get("scanned_image"))
@@ -444,24 +444,28 @@ class CalorieAIAssistant:
         else: return {}
         
         
-    def estimate_nutrition_with_ai(self, description) -> dict:
+    def estimate_nutrition_with_ai(self, description, number_of_servings, measurement_unit) -> dict:
         user_country = getattr(self.user, "country", "Nigeria")
         prompt = f"""
-        You are a knowledgeable nutritionist.
+            You are a knowledgeable nutritionist.
 
-        Please estimate the total calories, protein (g), fats (g), and carbohydrates (g) for the following food description:
-        "{description}"
+            Please estimate the total calories, protein (g), fats (g), and carbohydrates (g) for the following food description:
 
-        Base your estimates on standard portion sizes typical of {user_country} unless otherwise specified.
+            "{description}"
 
-        Respond ONLY with a JSON object, no explanations or additional text, in this exact format:
-        {{
-            "calories": 123,
-            "protein": 4,
-            "fats": 2,
-            "carbs": 25
-        }}
-        """
+            The food was consumed in **{number_of_servings} {measurement_unit}(s)**.
+
+            Base your estimates on standard portion sizes typical of {user_country} unless otherwise specified.
+
+            Respond ONLY with a JSON object, no explanations or additional text, in this exact format:
+            {{
+                "calories": 123,
+                "protein": 4,
+                "fats": 2,
+                "carbs": 25
+            }}
+            """
+
 
         # Call the AI service to generate nutrition estimate
         nutrition = OpenAIClient.generate_response(prompt)
