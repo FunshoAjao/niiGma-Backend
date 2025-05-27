@@ -11,6 +11,7 @@ class Section(models.TextChoices):
     CALORIES = "calories", "Calories"
     OVULATION = "ovulation", "Ovulation",
     SYMPTOM_TRACKER = "symptom_tracker", "Symptom_Checker"
+    MIND_SPACE = "mind_space", "Mind_Space"
     NONE = "none", "None"
     
 class DeviceType(models.TextChoices):

@@ -24,6 +24,8 @@ class MoodMirrorEntry(BaseModel):
     mind_space = models.ForeignKey(MindSpaceProfile, on_delete=models.CASCADE)
     mood = models.CharField(choices=MoodChoices, max_length=50)
     reflection = models.TextField(help_text="Reflect on your day.")
+    title = models.CharField(max_length=255, blank=True, null=True,
+                             help_text="Optional title for the entry.")
     date = models.DateTimeField()
 
     class Meta:
