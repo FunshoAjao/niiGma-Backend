@@ -69,7 +69,7 @@ class MoodMirrorEntryViewSet(viewsets.ModelViewSet):
         if user.mind_space_profile is None:
             return CustomErrorResponse(
                 message="Mind Space profile not found for the user.",
-                status=404
+                status=200
             )
         
         title = MindSpaceAIAssistant(
@@ -116,7 +116,7 @@ class MoodMirrorEntryViewSet(viewsets.ModelViewSet):
                 return CustomSuccessResponse(
                     data=[],
                     message="No mood logs found for the user.",
-                    status=404
+                    status=200
                 )
             
             reflection_note = MindSpaceAIAssistant(
@@ -124,7 +124,50 @@ class MoodMirrorEntryViewSet(viewsets.ModelViewSet):
             ).generate_reflection_note(
                 logs
             )
+            
             return CustomSuccessResponse(data=reflection_note, message="Reflection note generated successfully")
+        except Exception as e:
+            return CustomErrorResponse(message=str(e), status=500)
+        
+    @action(
+        methods=["get"],
+        detail=False,
+        url_path="generate_today_affirmation",
+        permission_classes=[IsAuthenticated]
+    )
+    def generate_today_affirmation(self, request, *args, **kwargs):
+        """
+        Generate a reflection note based on the user's mood and reflection.
+        """
+        user = request.user
+        
+        try:
+            logs = MoodMirrorEntry.objects.filter(
+                mind_space__user=user, date__date = timezone.now().date()
+            ).order_by('-created_at')
+            
+            if not logs.exists():
+                return CustomSuccessResponse(
+                    data=[],
+                    message="No mood logs found for the user.",
+                    status=200
+                )
+            
+            latest_log = logs[0]  # Get the most recent entry
+            
+            if latest_log.affirmation:
+                return CustomSuccessResponse(
+                    data=latest_log.affirmation,
+                    message="Reflection note already exists.",
+                    status=200
+                )
+            today_affirmation = MindSpaceAIAssistant(
+                user, user.mind_space_profile
+            ).generate_affirmation(
+                latest_log.reflection
+            )
+            logs.update(affirmation=today_affirmation)
+            return CustomSuccessResponse(data=today_affirmation, message="Today's affirmation generated successfully")
         except Exception as e:
             return CustomErrorResponse(message=str(e), status=500)
         
@@ -148,7 +191,7 @@ class MoodMirrorEntryViewSet(viewsets.ModelViewSet):
                 return CustomSuccessResponse(
                     data=[],
                     message="No mood logs found for the user.",
-                    status=404
+                    status=200
                 )
             insights = MindSpaceAIAssistant(
                 user, user.mind_space_profile

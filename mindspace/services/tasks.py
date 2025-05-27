@@ -135,3 +135,29 @@ class MindSpaceAIAssistant:
         return response
 
             
+    def get_affirmation_prompt(self, user_mood: str):
+        return f"""
+            Based on the fact that the user is feeling {user_mood} today, 
+            write a short, uplifting daily affirmation that helps them focus on positivity
+            and personal growth.
+            Make it encouraging and relevant to their current mood.
+            Respond ONLY with the affirmation as a plain string. Do not add quotes, explanations, or any extra text.
+            """
+            
+    def generate_affirmation(self, user_mood: str):
+        """
+        Generates a daily affirmation based on the user's current mood.
+        
+        :param user_mood: The user's current mood (e.g., "happy", "sad", "anxious")
+        :return: A short, uplifting affirmation string
+        """
+        prompt = self.get_affirmation_prompt(user_mood)
+        
+        response = OpenAIClient.generate_response(prompt)
+        if not response:
+            raise serializers.ValidationError(
+                {"message": "Failed to get a response from the AI service.", "status": "failed"},
+                code=500
+            )
+        
+        return response
