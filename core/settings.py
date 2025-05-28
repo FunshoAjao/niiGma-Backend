@@ -13,6 +13,10 @@ SECRET_KEY = config('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
+if config("ENVIRONMENT") == "prod":
+    DEBUG = False
+if config("ENVIRONMENT") == "testing":
+    DEBUG = True
 
 ALLOWED_HOSTS = [
     'niigma-backend-service.onrender.com',
