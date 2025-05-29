@@ -45,7 +45,7 @@ class SerializersException(Exception):
 
 class CustomSuccessResponse(Response):
     def __init__(self, data=None, message=None, status=200, **kwargs):
-        resp = {"status": "success", "entity":data, "message":message}
+        resp = {"status": "success", "data":data, "message":message}
         # resp.update(data)
         super().__init__(data=resp, status=status, **kwargs)
 
@@ -56,7 +56,7 @@ class CustomErrorResponse(Response):
         if isinstance(message, dict):
             message = " ".join([f"{key}: {', '.join(map(str, value))}" for key, value in message.items()])
 
-        resp = {"status": "failed", "entity": data, "message": message}
+        resp = {"status": "failed", "data": data, "message": message}
         super().__init__(data=resp, status=status, **kwargs)
 
 
