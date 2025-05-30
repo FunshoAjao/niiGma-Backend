@@ -19,6 +19,7 @@ if config("ENVIRONMENT") == "testing":
 
 ALLOWED_HOSTS = [
     'niigma-backend-service.onrender.com',
+    'niigma-backend-service-6gdy.onrender.com',
     'localhost',
     '127.0.0.1'
 ]
