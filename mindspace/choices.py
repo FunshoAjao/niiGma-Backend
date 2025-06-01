@@ -29,3 +29,8 @@ class MoodChoices(models.TextChoices):
     Tired = "tired", "Tired"
     Inspired = "inspired", "Inspired"
     Curious = "curious", "Curious"
+    
+class RitualTypeChoices(models.TextChoices):
+    Gratitude = "gratitude journaling", "Gratitude Journaling"
+    Breathing = "breathing", "Breathing"
+    Visualization = "visualization", "Visualization"

@@ -2,9 +2,9 @@ from rest_framework import viewsets, permissions
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from .services.tasks import MindSpaceAIAssistant
-from .models import MoodMirrorEntry, MindSpaceProfile
+from .models import *
 from common.responses import CustomErrorResponse, CustomSuccessResponse
-from .serializers import MindSpaceProfileSerializer, MoodMirrorEntrySerializer
+from .serializers import *
 from django.utils import timezone
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
@@ -202,3 +202,191 @@ class MoodMirrorEntryViewSet(viewsets.ModelViewSet):
             return CustomSuccessResponse(data=insights, message="Insights generated successfully")
         except Exception as e:
             return CustomErrorResponse(message=str(e), status=500)
+        
+class SoundscapePlayViewSet(viewsets.ModelViewSet):
+    queryset = SoundscapePlay.objects.all().order_by('-created_at')
+    serializer_class = SoundscapePlaySerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return SoundscapePlay.objects.filter(mind_space=self.request.user.mind_space)
+    
+    def create(self, request, *args, **kwargs):
+        """
+        Create sound scape play list.
+        """
+        serializer = self.serializer_class(data=request.data)
+        if not serializer.is_valid():
+            return CustomErrorResponse(
+                message=serializer.errors,
+                status=400
+            )
+        validated_data = serializer.validated_data
+        serializer.save(**validated_data)
+        return CustomSuccessResponse(
+            message="Soundscape Play created successfully.",
+            data=serializer.data
+        )
+        
+    def update(self, request, *args, **kwargs):
+        """
+        Update sound scape play list.
+        """
+        instance = self.get_object()
+        serializer = self.serializer_class(instance, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return CustomErrorResponse(
+                message=serializer.errors,
+                status=400
+            )
+        validated_data = serializer.validated_data
+        serializer.save(**validated_data)
+        return CustomSuccessResponse(
+            message="Soundscape Play updated successfully.",
+            data=serializer.data
+        )
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return CustomSuccessResponse(data=serializer.data)
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return CustomSuccessResponse(data=serializer.data)
+
+
+class SleepJournalEntryViewSet(viewsets.ModelViewSet):
+    queryset = SleepJournalEntry.objects.all().order_by('-created_at')
+    serializer_class = SleepJournalEntrySerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return SleepJournalEntry.objects.filter(mind_space=self.request.user.mind_space)
+    
+    def create(self, request, *args, **kwargs):
+        """
+        Create a new sleep journal entry.
+        """
+        serializer = self.serializer_class(data=request.data)
+        if not serializer.is_valid():
+            return CustomErrorResponse(
+                message=serializer.errors,
+                status=400
+            )
+        validated_data = serializer.validated_data
+        serializer.save(**validated_data)
+        return CustomSuccessResponse(
+            message="Sleep Journal Entry created successfully.",
+            data=serializer.data
+        )
+        
+    def update(self, request, *args, **kwargs):
+        """
+        Update an existing sleep journal entry.
+        """
+        instance = self.get_object()
+        serializer = self.serializer_class(instance, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return CustomErrorResponse(
+                message=serializer.errors,
+                status=400
+            )
+        validated_data = serializer.validated_data
+        serializer.save(**validated_data)
+        return CustomSuccessResponse(
+            message="Sleep Journal Entry updated successfully.",
+            data=serializer.data
+        )
+        
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Retrieve a specific sleep journal entry.
+        """
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return CustomSuccessResponse(data=serializer.data)
+    
+    def list(self, request, *args, **kwargs):
+        """
+        List all sleep journal entries for the authenticated user.
+        """
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return CustomSuccessResponse(data=serializer.data)
+
+
+class WindDownRitualLogViewSet(viewsets.ModelViewSet):
+    queryset = WindDownRitualLog.objects.all().order_by('-created_at')
+    serializer_class = WindDownRitualLogSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return WindDownRitualLog.objects.filter(mind_space=self.request.user.mind_space)
+    
+    def create(self, request, *args, **kwargs):
+        """
+        Create a new wind down ritual log.
+        """
+        serializer = self.serializer_class(data=request.data)
+        if not serializer.is_valid():
+            return CustomErrorResponse(
+                message=serializer.errors,
+                status=400
+            )
+        validated_data = serializer.validated_data
+        serializer.save(**validated_data)
+        return CustomSuccessResponse(
+            message="Wind Down Ritual Log created successfully.",
+            data=serializer.data
+        )
+        
+    def update(self, request, *args, **kwargs):
+        """
+        Update an existing wind down ritual log.
+        """
+        instance = self.get_object()
+        serializer = self.serializer_class(instance, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return CustomErrorResponse(
+                message=serializer.errors,
+                status=400
+            )
+        validated_data = serializer.validated_data
+        serializer.save(**validated_data)
+        return CustomSuccessResponse(
+            message="Wind Down Ritual Log updated successfully.",
+            data=serializer.data
+        )
+        
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Retrieve a specific wind down ritual log.
+        """ 
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return CustomSuccessResponse(data=serializer.data)
+    
+    def list(self, request, *args, **kwargs):
+        """
+        List all wind down ritual logs for the authenticated user.
+        """
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return CustomSuccessResponse(data=serializer.data)

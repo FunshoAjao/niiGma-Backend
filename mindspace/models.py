@@ -2,7 +2,7 @@ from django.db import models
 
 from accounts.models import User
 from common.models import BaseModel
-from mindspace.choices import MindSpaceFrequencyType, MoodChoices
+from mindspace.choices import *
 
 class MindSpaceProfile(BaseModel):
     """
@@ -35,3 +35,29 @@ class MoodMirrorEntry(BaseModel):
 
     class Meta:
         ordering = ['-created_at']
+        
+class SoundscapePlay(BaseModel):
+    mind_space = models.ForeignKey(MindSpaceProfile, on_delete=models.CASCADE, related_name='soundscape_plays')
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    is_active = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f'{self.mind_space.user.email} - {self.name}'
+
+class SleepJournalEntry(BaseModel):
+    mind_space = models.ForeignKey(MindSpaceProfile, on_delete=models.CASCADE, related_name='sleep_journals')
+    date = models.DateField()
+    sleep_quality = models.PositiveSmallIntegerField(choices=[(i, i) for i in range(1, 6)])
+    reflections = models.TextField(blank=True)
+
+    def __str__(self):
+        return f'{self.mind_space.user.email} - {self.date}'
+
+class WindDownRitualLog(BaseModel):
+    mind_space = models.ForeignKey(MindSpaceProfile, on_delete=models.CASCADE, related_name='wind_down_rituals')
+    ritual_type = models.CharField(max_length=50, choices=RitualTypeChoices)
+    completed_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.mind_space.user.email} - {self.ritual_type}'

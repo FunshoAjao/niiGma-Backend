@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from mindspace.choices import MindSpaceFrequencyType
-from .models import MindSpaceProfile, MoodMirrorEntry
+from .models import *
 
 class MoodMirrorEntrySerializer(serializers.ModelSerializer):
     class Meta:
@@ -35,3 +35,35 @@ class MindSpaceProfileSerializer(serializers.ModelSerializer):
             'frequency_type': {'required': True},
             'goals': {'required': True}
         }
+
+class SoundscapePlaySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SoundscapePlay
+        fields = '__all__'
+        read_only_fields = ['id', 'started_at', 'mind_space']
+
+    def create(self, validated_data):
+        validated_data['mind_space'] = self.context['request'].user.mind_space
+        return super().create(validated_data)
+
+
+class SleepJournalEntrySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SleepJournalEntry
+        fields = '__all__'
+        read_only_fields = ['id', 'mind_space']
+
+    def create(self, validated_data):
+        validated_data['mind_space'] = self.context['request'].user.mind_space
+        return super().create(validated_data)
+
+
+class WindDownRitualLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WindDownRitualLog
+        fields = '__all__'
+        read_only_fields = ['id', 'completed_at', 'mind_space']
+
+    def create(self, validated_data):
+        validated_data['mind_space'] = self.context['request'].user.mind_space
+        return super().create(validated_data)

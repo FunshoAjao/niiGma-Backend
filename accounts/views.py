@@ -488,6 +488,7 @@ class UserViewSet(viewsets.ModelViewSet):
         return CustomSuccessResponse(data=response, message="Chat with AI initiated successfully")
             
 class PromptHistoryView(ListAPIView):
+    queryset = PromptHistory.objects.all()
     serializer_class = PromptHistorySerializer
     permission_classes = [IsAuthenticated]
 
