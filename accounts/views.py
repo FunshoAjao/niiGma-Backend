@@ -424,10 +424,14 @@ class UserViewSet(viewsets.ModelViewSet):
     def resend_otp(self, request, *args, **kwargs):
         serializer = EmailSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            return CustomErrorResponse(message=serializer.errors, status=400)
+        
+        if not User.objects.filter(email=serializer.validated_data['email']).exists():
+            return CustomErrorResponse(message="User with this email does not exist", status=404)
 
         otp = generate_otp()
         cache.set(serializer.validated_data['email'], otp)
-        send_otp(serializer.validated_data['email'], otp)
 
         send_otp.delay(serializer.validated_data['email'], otp)
 
