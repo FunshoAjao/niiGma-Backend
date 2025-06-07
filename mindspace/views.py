@@ -32,6 +32,9 @@ class MoodMirrorEntryViewSet(viewsets.ModelViewSet):
                 message="Mind Space profile already exists for the user.",
                 status=400)
         serializer.save(user=user)
+        user = User.objects.get(id=user.id)
+        user.is_mind_space_setup = True
+        user.save()
         return CustomSuccessResponse(
             message="Mood Mirror Entry created successfully.",
             data=serializer.data

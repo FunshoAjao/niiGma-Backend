@@ -21,11 +21,11 @@ class UserSerializer(serializers.ModelSerializer):
             "id", "email", "password", "first_name", "last_name",
             "goals", "date_of_birth", "height", "height_unit", "wellness_status", "referral_source", "allow_push_notifications", "allow_ovulation_tracker", 
             "is_active", "last_login", "is_superuser", "is_staff", "profile_picture",
-            "account_verified", "account_verified_at", "created_at", "updated_at", "has_completed_onboarding"
+            "account_verified", "account_verified_at", "created_at", "updated_at", "has_completed_onboarding", "is_calories_setup", "is_mind_space_setup", "is_ovulation_tracker_setup", "is_trivia_setup", "country",
         ]
         read_only_fields = [
             "account_verified", "account_verified_at", "is_active",
-            "last_login", "is_superuser", "is_staff", "created_at", "updated_at", "has_completed_onboarding"
+            "last_login", "is_superuser", "is_staff", "created_at", "updated_at", "has_completed_onboarding", "is_calories_setup", "is_mind_space_setup", "is_ovulation_tracker_setup", "is_trivia_setup"
         ]
 
     def validate_email(self, value):

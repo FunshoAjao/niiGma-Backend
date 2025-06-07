@@ -65,7 +65,9 @@ class CalorieViewSet(viewsets.ModelViewSet):
             user=request.user,
             defaults=validated_data
         )
-
+        user = User.objects.get(id=request.user.id)
+        user.is_calories_setup = True
+        user.save()
         response_serializer = self.get_serializer(obj)
         message = "Calorie created successfully" if created else "Calorie updated successfully"
         return CustomSuccessResponse(data=response_serializer.data, message=message, status=201 if created else 200)

@@ -78,6 +78,11 @@ class User(AbstractBaseUser, PermissionsMixin):
     has_completed_onboarding = models.BooleanField(default=False)
     onboarding_completed_at = models.DateTimeField(null=True, blank=True)
     
+    is_calories_setup = models.BooleanField(default=False)
+    is_mind_space_setup = models.BooleanField(default=False)
+    is_ovulation_tracker_setup = models.BooleanField(default=False)
+    is_trivia_setup = models.BooleanField(default=False)
+    
     allow_push_notifications = models.BooleanField(default=False)
     allow_ovulation_tracker = models.BooleanField(default=False)
     profile_picture = models.ImageField(upload_to='profile_pictures/', null=True, blank=True)
