@@ -40,3 +40,9 @@ class TagChoices(models.TextChoices):
     Love = "love", "Love"
     Grief = "grief", "Grief"
     Clarity = "clarity", "Clarity"
+    
+class CategoryChoices(models.TextChoices):
+    SelfCare = "selfcare", "SelfCare"
+    Parenting = "parenting", "Parenting"
+    Stress = "stress", "Stress"
+    Budget = "budget", "Budget"

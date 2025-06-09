@@ -85,3 +85,25 @@ class SoulReflectionSerializer(serializers.ModelSerializer):
         user = self.context['request'].user
         validated_data['mind_space'] = user.mind_space_profile
         return super().create(validated_data)
+    
+class ResilienceReplaySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ResilienceReplay
+        fields = ['id', 'message', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+    def create(self, validated_data):
+        validated_data['mind_space'] = self.context['request'].user.mind_space_profile
+        return super().create(validated_data)
+
+class WhisperSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Whisper
+        fields = ['id', 'content', 'city', 'country', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+class ThriveToolSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ThriveTool
+        fields = ['id', 'title', 'content', 'category', 'created_at']
+        read_only_fields = ['id', 'created_at']

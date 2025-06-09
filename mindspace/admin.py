@@ -37,3 +37,21 @@ class SoulReflectionAdmin(admin.ModelAdmin):
     search_fields = ('mind_space', 'tag', 'reflection')
     list_display = ( 'mind_space', 'tag')
     ordering = ('-created_at',) 
+    
+@admin.register(ResilienceReplay)
+class ResilienceReplayAdmin(admin.ModelAdmin):
+    search_fields = ('mind_space', 'message')
+    list_display = ( 'mind_space',)
+    ordering = ('-created_at',) 
+    
+@admin.register(Whisper)
+class WhisperAdmin(admin.ModelAdmin):
+    search_fields = ('mind_space', 'content', 'country')
+    list_display = ( 'mind_space', 'country', 'city')
+    ordering = ('-created_at',) 
+    
+@admin.register(ThriveTool)
+class ThriveToolAdmin(admin.ModelAdmin):
+    search_fields = ( 'title', 'category')
+    list_display = ( 'title', 'category')
+    ordering = ('-created_at',) 

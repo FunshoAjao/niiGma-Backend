@@ -1,6 +1,9 @@
 from rest_framework import viewsets, permissions
 from rest_framework.response import Response
 from rest_framework.decorators import action
+
+from accounts.choices import Gender
+from mindspace.permissions import IsSuperAdmin
 from .services.tasks import MindSpaceAIAssistant, create_sound_space_playlist
 from .models import *
 from common.responses import CustomErrorResponse, CustomSuccessResponse
@@ -592,6 +595,26 @@ class SoulReflectionViewSet(viewsets.ModelViewSet):
     queryset = SoulReflection.objects.all().order_by('-created_at')
     serializer_class = SoulReflectionSerializer
     permission_classes = [IsAuthenticated]
+    
+    def get_paginated_response(self, data):
+        return Response({
+            'count': self.paginator.page.paginator.count,
+            'next': self.paginator.get_next_link(),
+            'previous': self.paginator.get_previous_link(),
+            'status': 'success',
+            'entity': data,
+            'message': ''
+        })
+
+    def get_paginated_response_for_none_records(self, data):
+        return Response({
+            'count': 0,
+            'next': None,
+            'previous': None,
+            'status': 'success',
+            'entity': data,
+            'message': 'No project records found.'
+        })
 
     def get_queryset(self):
         return SoulReflection.objects.all()
@@ -642,6 +665,292 @@ class SoulReflectionViewSet(viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         """
         List all soul reflections.
+        """
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return CustomSuccessResponse(data=serializer.data)
+    
+class ResilienceReplayViewSet(viewsets.ModelViewSet):
+    queryset = ResilienceReplay.objects.all().order_by('-created_at')
+    serializer_class = ResilienceReplaySerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_paginated_response(self, data):
+        return Response({
+            'count': self.paginator.page.paginator.count,
+            'next': self.paginator.get_next_link(),
+            'previous': self.paginator.get_previous_link(),
+            'status': 'success',
+            'entity': data,
+            'message': ''
+        })
+
+    def get_paginated_response_for_none_records(self, data):
+        return Response({
+            'count': 0,
+            'next': None,
+            'previous': None,
+            'status': 'success',
+            'entity': data,
+            'message': 'No project records found.'
+        })
+
+    def get_queryset(self):
+        return ResilienceReplay.objects.filter(
+            mind_space=self.request.user.mind_space_profile
+        ).order_by('-created_at')
+
+    def create(self, request, *args, **kwargs):
+        """
+        Create resilience.
+        """
+        serializer = self.serializer_class(data=request.data, context={'request': request})
+        if not serializer.is_valid():
+            return CustomErrorResponse(
+                message=serializer.errors,
+                status=400
+            )
+        if request.user.gender != Gender.FEMALE:
+            return CustomErrorResponse(message="Only females are allowed to use this platform")
+        validated_data = serializer.validated_data
+        serializer.save(**validated_data)
+        return CustomSuccessResponse(
+            message="Resilience created successfully.",
+            data=serializer.data
+        )
+        
+    def update(self, request, *args, **kwargs):
+        """
+        Update a resilience replay.
+        """
+        instance = self.get_object()
+        serializer = self.serializer_class(instance, data=request.data, partial=True, context={'request': request})
+        if not serializer.is_valid():
+            return CustomErrorResponse(
+                message=serializer.errors,
+                status=400
+            )
+        if request.user.gender != Gender.FEMALE:
+            return CustomErrorResponse(message="Only females are allowed to use this platform")
+        validated_data = serializer.validated_data
+        serializer.save(**validated_data)
+        return CustomSuccessResponse(
+            message="Resilience updated successfully.",
+            data=serializer.data
+        )
+        
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Retrieve resilience replay.
+        """ 
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return CustomSuccessResponse(data=serializer.data)
+    
+    def list(self, request, *args, **kwargs):
+        """
+        List all resilience.
+        """
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return CustomSuccessResponse(data=serializer.data)
+    
+class WhisperViewSet(viewsets.ModelViewSet):
+    queryset = Whisper.objects.all().order_by('-created_at')
+    serializer_class = WhisperSerializer
+    permission_classes = [IsAuthenticated] 
+    
+    def get_paginated_response(self, data):
+        return Response({
+            'count': self.paginator.page.paginator.count,
+            'next': self.paginator.get_next_link(),
+            'previous': self.paginator.get_previous_link(),
+            'status': 'success',
+            'entity': data,
+            'message': ''
+        })
+
+    def get_paginated_response_for_none_records(self, data):
+        return Response({
+            'count': 0,
+            'next': None,
+            'previous': None,
+            'status': 'success',
+            'entity': data,
+            'message': 'No project records found.'
+        })
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        filter_type = self.request.query_params.get('filter')
+
+        now = timezone.now()
+
+        if filter_type == "today":
+            return queryset.filter(shared_at__date=now.date())
+
+        if filter_type == "yesterday":
+            yesterday = now - timedelta(days=1)
+            return queryset.filter(
+                shared_at__date=yesterday.date()
+            )
+
+        if filter_type == "lastweek":
+            one_week_ago = now - timedelta(days=7)
+            return queryset.filter(shared_at__date__gte=one_week_ago.date())
+
+        # Default to all-time
+        return queryset
+    
+    def create(self, request, *args, **kwargs):
+        """
+        Create whisper.
+        """
+        serializer = self.serializer_class(data=request.data, context={'request': request})
+        if not serializer.is_valid():
+            return CustomErrorResponse(
+                message=serializer.errors,
+                status=400
+            )
+        if request.user.gender != Gender.FEMALE:
+            return CustomErrorResponse(message="Only females are allowed to use this platform")
+        validated_data = serializer.validated_data
+        serializer.save(**validated_data)
+        return CustomSuccessResponse(
+            message="Whisper created successfully.",
+            data=serializer.data
+        )
+        
+    def update(self, request, *args, **kwargs):
+        """
+        Update a whisper.
+        """
+        instance = self.get_object()
+        serializer = self.serializer_class(instance, data=request.data, partial=True, context={'request': request})
+        if not serializer.is_valid():
+            return CustomErrorResponse(
+                message=serializer.errors,
+                status=400
+            )
+        if request.user.gender != Gender.FEMALE:
+            return CustomErrorResponse(message="Only females are allowed to use this platform")
+        validated_data = serializer.validated_data
+        serializer.save(**validated_data)
+        return CustomSuccessResponse(
+            message="Whisper updated successfully.",
+            data=serializer.data
+        )
+        
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Retrieve whisper.
+        """ 
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return CustomSuccessResponse(data=serializer.data)
+    
+    def list(self, request, *args, **kwargs):
+        """
+        List all whispers.
+        """
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return CustomSuccessResponse(data=serializer.data)
+
+
+class ThriveToolViewSet(viewsets.ModelViewSet):
+    queryset = ThriveTool.objects.all().order_by('-created_at')
+    serializer_class = ThriveToolSerializer
+    permission_classes = [IsAuthenticated, IsSuperAdmin]
+    
+    def get_paginated_response(self, data):
+        return Response({
+            'count': self.paginator.page.paginator.count,
+            'next': self.paginator.get_next_link(),
+            'previous': self.paginator.get_previous_link(),
+            'status': 'success',
+            'entity': data,
+            'message': ''
+        })
+
+    def get_paginated_response_for_none_records(self, data):
+        return Response({
+            'count': 0,
+            'next': None,
+            'previous': None,
+            'status': 'success',
+            'entity': data,
+            'message': 'No project records found.'
+        })
+
+    def get_queryset(self):
+        queryset = ThriveTool.objects.all().order_by('category', 'title')
+        category = self.request.query_params.get('category')
+        if category:
+            queryset = queryset.filter(category=category.lower())
+        return queryset
+
+    def create(self, request, *args, **kwargs):
+        """
+        Create a new thrive tool.
+        """
+        serializer = self.serializer_class(data=request.data, context={'request': request})
+        if not serializer.is_valid():
+            return CustomErrorResponse(
+                message=serializer.errors,
+                status=400
+            )
+        validated_data = serializer.validated_data
+        serializer.save(**validated_data)
+        return CustomSuccessResponse(
+            message="Thrive tool created successfully.",
+            data=serializer.data
+        )
+        
+    def update(self, request, *args, **kwargs):
+        """
+        Update a thrive tool.
+        """
+        instance = self.get_object()
+        serializer = self.serializer_class(instance, data=request.data, partial=True, context={'request': request})
+        if not serializer.is_valid():
+            return CustomErrorResponse(
+                message=serializer.errors,
+                status=400
+            )
+        validated_data = serializer.validated_data
+        serializer.save(**validated_data)
+        return CustomSuccessResponse(
+            message="Thrive tool updated successfully.",
+            data=serializer.data
+        )
+        
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Retrieve a thrive tool.
+        """ 
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return CustomSuccessResponse(data=serializer.data)
+    
+    def list(self, request, *args, **kwargs):
+        """
+        List all thrives.
         """
         queryset = self.filter_queryset(self.get_queryset())
         page = self.paginate_queryset(queryset)

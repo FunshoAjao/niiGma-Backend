@@ -108,3 +108,26 @@ class SoulReflection(BaseModel):
     def __str__(self):
         return f"Reflection from {self.city or 'Somewhere'}"
 
+class ResilienceReplay(BaseModel):
+    mind_space = models.ForeignKey(MindSpaceProfile, on_delete=models.CASCADE, related_name='replays')
+    message = models.TextField()
+
+    def __str__(self):
+        return f"{self.mind_space.user.email} - replay"
+
+class Whisper(BaseModel):
+    mind_space = models.ForeignKey(MindSpaceProfile, on_delete=models.CASCADE, related_name='whisper')
+    content = models.TextField()
+    country = models.CharField(max_length=100, blank=True, null=True)
+    city = models.CharField(max_length=100, blank=True, null=True)
+
+    def __str__(self):
+        return f"Whisper from {self.city or 'Unknown'}"
+
+class ThriveTool(BaseModel):
+    title = models.CharField(max_length=100)
+    content = models.TextField()
+    category = models.CharField(max_length=50, choices=CategoryChoices)
+
+    def __str__(self):
+        return f"{self.title} ({self.category})"

@@ -8,5 +8,8 @@ router.register(r'soundscape', SoundscapePlayViewSet, basename='soundscape')
 router.register(r'sleep_journal', SleepJournalEntryViewSet, basename='sleep_journal')
 router.register(r'wind_down', WindDownRitualLogViewSet, basename='wind_down')
 router.register(r'soul_reflection', SoulReflectionViewSet, basename='soul_reflection')
+router.register(r'replays', ResilienceReplayViewSet, basename='resilience_replay')
+router.register(r'whispers', WhisperViewSet, basename='whispers')
+router.register(r'thrive_tool', ThriveToolViewSet, basename='thrive_tool')
 
 urlpatterns = router.urls
