@@ -1,6 +1,7 @@
 import json
 from accounts.choices import Section
 from calories.serializers import MealSource
+from mindspace.services import soundscape_data
 from utils.helpers.ai_service import OpenAIClient
 from accounts.models import PromptHistory
 import requests
@@ -10,6 +11,26 @@ from datetime import timedelta
 from django.utils.timezone import now
 from datetime import date
 from django.db.models import Sum
+from core.celery import app as celery_app
+
+@celery_app.task(name="create_sound_space_playlist")
+def create_sound_space_playlist(mind_space_id):
+    try:
+        mind_space = MindSpaceProfile.objects.get(id=mind_space_id)
+    except MindSpaceProfile.DoesNotExist:
+        print(f"MindSpaceProfile with ID {mind_space_id} does not exist.")
+        return
+    
+    soundscape_objects = SoundscapeLibrary.objects.filter(is_active=True)
+    SoundscapePlay.objects.bulk_create([
+        SoundscapePlay(
+            mind_space=mind_space,
+            soundscape=s
+        )
+        for s in soundscape_objects
+    ])
+    print(f"Created {len(soundscape_objects)} soundscapes for MindSpace ID {mind_space_id}")
+
 
 class MindSpaceAIAssistant:
     def __init__(self, user, mind_space_profile):
@@ -153,6 +174,17 @@ class MindSpaceAIAssistant:
         """
         prompt = self.get_affirmation_prompt(user_mood)
         
+        response = OpenAIClient.generate_response(prompt)
+        if not response:
+            raise serializers.ValidationError(
+                {"message": "Failed to get a response from the AI service.", "status": "failed"},
+                code=500
+            )
+        
+        return response
+
+    def get_ai_curated_soundscapes(self):
+        prompt = "Give me 5 relaxing soundscapes for deep sleep this week, including nature, white noise, and rain variants."
         response = OpenAIClient.generate_response(prompt)
         if not response:
             raise serializers.ValidationError(

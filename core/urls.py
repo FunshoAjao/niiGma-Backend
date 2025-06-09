@@ -7,7 +7,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('accounts.urls')),
     path('calories/', include('calories.urls')),
-    path('mind_space/', include('mindspace.urls')),
+    path('', include('mindspace.urls')),
     
     path('docs/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('swagger/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),

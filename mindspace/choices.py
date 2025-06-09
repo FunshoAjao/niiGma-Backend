@@ -34,3 +34,4 @@ class RitualTypeChoices(models.TextChoices):
     Gratitude = "gratitude journaling", "Gratitude Journaling"
     Breathing = "breathing", "Breathing"
     Visualization = "visualization", "Visualization"
+    

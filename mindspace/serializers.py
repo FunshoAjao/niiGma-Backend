@@ -35,15 +35,22 @@ class MindSpaceProfileSerializer(serializers.ModelSerializer):
             'frequency_type': {'required': True},
             'goals': {'required': True}
         }
+        
+class SoundscapeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SoundscapeLibrary
+        fields = ['id', 'name', 'description', 'audio_url', 'duration', 'mood_tag']
+
 
 class SoundscapePlaySerializer(serializers.ModelSerializer):
+    soundscape = SoundscapeSerializer(read_only=True)
     class Meta:
         model = SoundscapePlay
         fields = '__all__'
         read_only_fields = ['id', 'started_at', 'mind_space']
 
     def create(self, validated_data):
-        validated_data['mind_space'] = self.context['request'].user.mind_space
+        validated_data['mind_space'] = self.context['request'].user.mind_space_profile
         return super().create(validated_data)
 
 
@@ -54,16 +61,16 @@ class SleepJournalEntrySerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'mind_space']
 
     def create(self, validated_data):
-        validated_data['mind_space'] = self.context['request'].user.mind_space
+        validated_data['mind_space'] = self.context['request'].user.mind_space_profile
         return super().create(validated_data)
 
 
 class WindDownRitualLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = WindDownRitualLog
-        fields = '__all__'
+        fields = ['id', 'ritual_type', 'entries', 'reflection', 'metadata', 'completed_at']
         read_only_fields = ['id', 'completed_at', 'mind_space']
 
     def create(self, validated_data):
-        validated_data['mind_space'] = self.context['request'].user.mind_space
+        validated_data['mind_space'] = self.context['request'].user.mind_space_profile
         return super().create(validated_data)

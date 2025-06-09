@@ -1,5 +1,5 @@
 from django.db import models
-
+from django.contrib.postgres.fields import ArrayField
 from accounts.models import User
 from common.models import BaseModel
 from mindspace.choices import *
@@ -36,20 +36,42 @@ class MoodMirrorEntry(BaseModel):
     class Meta:
         ordering = ['-created_at']
         
-class SoundscapePlay(BaseModel):
-    mind_space = models.ForeignKey(MindSpaceProfile, on_delete=models.CASCADE, related_name='soundscape_plays')
+class SoundscapeLibrary(models.Model):
+    """
+    This Library is exclusive for the admin
+    """
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
-    is_active = models.BooleanField(default=False)
+    audio_url = models.URLField()
+    duration = models.IntegerField(blank=True, null=True, help_text="Duration in seconds")
+    mood_tag = models.CharField(max_length=50, blank=True, null=True)  # e.g., "rain", "forest"
+    is_active = models.BooleanField(default=True)
+    is_featured = models.BooleanField(default=False)  # for weekly curation
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f'{self.mind_space.user.email} - {self.name}'
+        return self.name
+
+        
+class SoundscapePlay(BaseModel):
+    mind_space = models.ForeignKey(MindSpaceProfile, on_delete=models.CASCADE, related_name='soundscape_plays')
+    soundscape = models.ForeignKey(SoundscapeLibrary, on_delete=models.CASCADE, blank=True, null=True)
+    is_liked = models.BooleanField(default=False)
+    played_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    duration_played = models.IntegerField(blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.mind_space.user.email} played {self.soundscape.name}"
 
 class SleepJournalEntry(BaseModel):
     mind_space = models.ForeignKey(MindSpaceProfile, on_delete=models.CASCADE, related_name='sleep_journals')
     date = models.DateField()
     sleep_quality = models.PositiveSmallIntegerField(choices=[(i, i) for i in range(1, 6)])
-    reflections = models.TextField(blank=True)
+    journal_entry = models.TextField(blank=True)
+    sleep_summary = models.TextField(
+        null=True, blank=True,
+        help_text="How did you sleep last night? E.g., dreams, restfulness, emotions"
+    )
 
     def __str__(self):
         return f'{self.mind_space.user.email} - {self.date}'
@@ -57,7 +79,19 @@ class SleepJournalEntry(BaseModel):
 class WindDownRitualLog(BaseModel):
     mind_space = models.ForeignKey(MindSpaceProfile, on_delete=models.CASCADE, related_name='wind_down_rituals')
     ritual_type = models.CharField(max_length=50, choices=RitualTypeChoices)
+    
+    entries = ArrayField(
+        base_field=models.TextField(),
+        size=3,
+        blank=True,
+        default=list,
+        help_text="E.g., gratitude entries"
+    )
+
+    reflection = models.TextField(blank=True, null=True, help_text="Optional reflection text")
+    metadata = models.JSONField(blank=True, null=True, help_text="Extra data: e.g., breathing cycles")
     completed_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f'{self.mind_space.user.email} - {self.ritual_type}'
+

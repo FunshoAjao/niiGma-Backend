@@ -1,17 +1,38 @@
 from rest_framework import viewsets, permissions
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from .services.tasks import MindSpaceAIAssistant
+from .services.tasks import MindSpaceAIAssistant, create_sound_space_playlist
 from .models import *
 from common.responses import CustomErrorResponse, CustomSuccessResponse
 from .serializers import *
 from django.utils import timezone
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from django.db import transaction
 
-class MoodMirrorEntryViewSet(viewsets.ModelViewSet):
+class MindSpaceViewSet(viewsets.ModelViewSet):
     queryset = MindSpaceProfile.objects.all()
     serializer_class = MindSpaceProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    def get_paginated_response(self, data):
+        return Response({
+            'count': self.paginator.page.paginator.count,
+            'next': self.paginator.get_next_link(),
+            'previous': self.paginator.get_previous_link(),
+            'status': 'success',
+            'entity': data,
+            'message': ''
+        })
+
+    def get_paginated_response_for_none_records(self, data):
+        return Response({
+            'count': 0,
+            'next': None,
+            'previous': None,
+            'status': 'success',
+            'entity': data,
+            'message': 'No project records found.'
+        })
 
     def get_queryset(self):
         """
@@ -21,25 +42,138 @@ class MoodMirrorEntryViewSet(viewsets.ModelViewSet):
             mind_space__user=self.request.user
         ).order_by('-created_at')
 
-    def create(self, serializer):
+    @transaction.atomic
+    def create(self, request):
         """
         Automatically associate entry with the user's MindSpaceProfile.
         """
+        serializer = self.serializer_class(data=request.data, context={'request': request})
+        if not serializer.is_valid():
+            return CustomErrorResponse(message=serializer.errors)
         user = self.request.user
         if MindSpaceProfile.objects.filter(user=user).exists():
             print("Mind Space profile already exists for the user.")
             return CustomErrorResponse(
                 message="Mind Space profile already exists for the user.",
                 status=400)
-        serializer.save(user=user)
+        mindspace_profile = serializer.save(user=user)
         user = User.objects.get(id=user.id)
         user.is_mind_space_setup = True
         user.save()
+        transaction.on_commit(lambda: create_sound_space_playlist.delay(mindspace_profile.id))
+        return CustomSuccessResponse(
+            message="Mind space created successfully.",
+            data=serializer.data
+        )
+        
+    def update(self, request, *args, **kwargs):
+        """
+        Update mind space play list.
+        """
+        instance = self.get_object()
+        serializer = self.serializer_class(instance, data=request.data, partial=True, context={'request': request})
+        if not serializer.is_valid():
+            return CustomErrorResponse(
+                message=serializer.errors,
+                status=400
+            )
+        validated_data = serializer.validated_data
+        serializer.save(**validated_data)
+        return CustomSuccessResponse(
+            message="Mind space updated successfully.",
+            data=serializer.data
+        )
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return CustomSuccessResponse(data=serializer.data)
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return CustomSuccessResponse(data=serializer.data)
+
+class MoodMirrorEntryViewSet(viewsets.ModelViewSet):
+    queryset = MindSpaceProfile.objects.all()
+    serializer_class = MindSpaceProfileSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_paginated_response(self, data):
+        return Response({
+            'count': self.paginator.page.paginator.count,
+            'next': self.paginator.get_next_link(),
+            'previous': self.paginator.get_previous_link(),
+            'status': 'success',
+            'entity': data,
+            'message': ''
+        })
+
+    def get_paginated_response_for_none_records(self, data):
+        return Response({
+            'count': 0,
+            'next': None,
+            'previous': None,
+            'status': 'success',
+            'entity': data,
+            'message': 'No project records found.'
+        })
+
+    def get_queryset(self):
+        """
+        Return only mood entries related to the authenticated user's mind space.
+        """
+        return MoodMirrorEntry.objects.filter(
+            mind_space__user=self.request.user
+        ).order_by('-created_at')
+
+    @transaction.atomic
+    def create(self, request, *args, **kwargs):
+        """
+        Automatically associate entry with the user's MindSpaceProfile.
+        """
+        serializer = self.serializer_class(data=request.data, context={'request': request})
+        if not serializer.is_valid():
+            return CustomErrorResponse(message=serializer.errors)
+        user = self.request.user
+        if MindSpaceProfile.objects.filter(user=user).exists():
+            print("Mind Space profile already exists for the user.")
+            return CustomErrorResponse(
+                message="Mind Space profile already exists for the user.",
+                status=400)
+        mindspace_profile = serializer.save(user=user)
+        user = User.objects.get(id=user.id)
+        user.is_mind_space_setup = True
+        user.save()
+        transaction.on_commit(lambda: create_sound_space_playlist.delay(mindspace_profile.id))
         return CustomSuccessResponse(
             message="Mood Mirror Entry created successfully.",
             data=serializer.data
         )
 
+    def update(self, request, *args, **kwargs):
+        """
+        Update mind space .
+        """
+        instance = self.get_object()
+        serializer = self.serializer_class(instance, data=request.data, partial=True, context={'request': request})
+        if not serializer.is_valid():
+            return CustomErrorResponse(
+                message=serializer.errors,
+                status=400
+            )
+        validated_data = serializer.validated_data
+        serializer.save(**validated_data)
+        return CustomSuccessResponse(
+            message="Mind space updated successfully.",
+            data=serializer.data
+        )
+    
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
         page = self.paginate_queryset(queryset)
@@ -211,14 +345,34 @@ class SoundscapePlayViewSet(viewsets.ModelViewSet):
     serializer_class = SoundscapePlaySerializer
     permission_classes = [IsAuthenticated]
 
+    def get_paginated_response(self, data):
+        return Response({
+            'count': self.paginator.page.paginator.count,
+            'next': self.paginator.get_next_link(),
+            'previous': self.paginator.get_previous_link(),
+            'status': 'success',
+            'entity': data,
+            'message': ''
+        })
+
+    def get_paginated_response_for_none_records(self, data):
+        return Response({
+            'count': 0,
+            'next': None,
+            'previous': None,
+            'status': 'success',
+            'entity': data,
+            'message': 'No project records found.'
+        })
+    
     def get_queryset(self):
-        return SoundscapePlay.objects.filter(mind_space=self.request.user.mind_space)
+        return SoundscapePlay.objects.filter(mind_space=self.request.user.mind_space_profile)
     
     def create(self, request, *args, **kwargs):
         """
         Create sound scape play list.
         """
-        serializer = self.serializer_class(data=request.data)
+        serializer = self.serializer_class(data=request.data, context={'request': request})
         if not serializer.is_valid():
             return CustomErrorResponse(
                 message=serializer.errors,
@@ -236,7 +390,7 @@ class SoundscapePlayViewSet(viewsets.ModelViewSet):
         Update sound scape play list.
         """
         instance = self.get_object()
-        serializer = self.serializer_class(instance, data=request.data, partial=True)
+        serializer = self.serializer_class(instance, data=request.data, partial=True, context={'request': request})
         if not serializer.is_valid():
             return CustomErrorResponse(
                 message=serializer.errors,
@@ -270,14 +424,34 @@ class SleepJournalEntryViewSet(viewsets.ModelViewSet):
     serializer_class = SleepJournalEntrySerializer
     permission_classes = [IsAuthenticated]
 
+    def get_paginated_response(self, data):
+        return Response({
+            'count': self.paginator.page.paginator.count,
+            'next': self.paginator.get_next_link(),
+            'previous': self.paginator.get_previous_link(),
+            'status': 'success',
+            'entity': data,
+            'message': ''
+        })
+
+    def get_paginated_response_for_none_records(self, data):
+        return Response({
+            'count': 0,
+            'next': None,
+            'previous': None,
+            'status': 'success',
+            'entity': data,
+            'message': 'No project records found.'
+        })
+
     def get_queryset(self):
-        return SleepJournalEntry.objects.filter(mind_space=self.request.user.mind_space)
+        return SleepJournalEntry.objects.filter(mind_space=self.request.user.mind_space_profile)
     
     def create(self, request, *args, **kwargs):
         """
         Create a new sleep journal entry.
         """
-        serializer = self.serializer_class(data=request.data)
+        serializer = self.serializer_class(data=request.data, context={'request': request})
         if not serializer.is_valid():
             return CustomErrorResponse(
                 message=serializer.errors,
@@ -295,7 +469,7 @@ class SleepJournalEntryViewSet(viewsets.ModelViewSet):
         Update an existing sleep journal entry.
         """
         instance = self.get_object()
-        serializer = self.serializer_class(instance, data=request.data, partial=True)
+        serializer = self.serializer_class(instance, data=request.data, partial=True, context={'request': request})
         if not serializer.is_valid():
             return CustomErrorResponse(
                 message=serializer.errors,
@@ -336,13 +510,13 @@ class WindDownRitualLogViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return WindDownRitualLog.objects.filter(mind_space=self.request.user.mind_space)
+        return WindDownRitualLog.objects.filter(mind_space=self.request.user.mind_space_profile)
     
     def create(self, request, *args, **kwargs):
         """
         Create a new wind down ritual log.
         """
-        serializer = self.serializer_class(data=request.data)
+        serializer = self.serializer_class(data=request.data, context={'request': request})
         if not serializer.is_valid():
             return CustomErrorResponse(
                 message=serializer.errors,
@@ -360,7 +534,7 @@ class WindDownRitualLogViewSet(viewsets.ModelViewSet):
         Update an existing wind down ritual log.
         """
         instance = self.get_object()
-        serializer = self.serializer_class(instance, data=request.data, partial=True)
+        serializer = self.serializer_class(instance, data=request.data, partial=True, context={'request': request})
         if not serializer.is_valid():
             return CustomErrorResponse(
                 message=serializer.errors,
