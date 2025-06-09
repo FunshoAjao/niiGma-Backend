@@ -509,6 +509,26 @@ class WindDownRitualLogViewSet(viewsets.ModelViewSet):
     serializer_class = WindDownRitualLogSerializer
     permission_classes = [IsAuthenticated]
 
+    def get_paginated_response(self, data):
+        return Response({
+            'count': self.paginator.page.paginator.count,
+            'next': self.paginator.get_next_link(),
+            'previous': self.paginator.get_previous_link(),
+            'status': 'success',
+            'entity': data,
+            'message': ''
+        })
+
+    def get_paginated_response_for_none_records(self, data):
+        return Response({
+            'count': 0,
+            'next': None,
+            'previous': None,
+            'status': 'success',
+            'entity': data,
+            'message': 'No project records found.'
+        })
+        
     def get_queryset(self):
         return WindDownRitualLog.objects.filter(mind_space=self.request.user.mind_space_profile)
     
@@ -558,6 +578,70 @@ class WindDownRitualLogViewSet(viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         """
         List all wind down ritual logs for the authenticated user.
+        """
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return CustomSuccessResponse(data=serializer.data)
+    
+class SoulReflectionViewSet(viewsets.ModelViewSet):
+    queryset = SoulReflection.objects.all().order_by('-created_at')
+    serializer_class = SoulReflectionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return SoulReflection.objects.all()
+
+    def create(self, request, *args, **kwargs):
+        """
+        Create a new soul reflection.
+        """
+        serializer = self.serializer_class(data=request.data, context={'request': request})
+        if not serializer.is_valid():
+            return CustomErrorResponse(
+                message=serializer.errors,
+                status=400
+            )
+        validated_data = serializer.validated_data
+        serializer.save(**validated_data)
+        return CustomSuccessResponse(
+            message="Soul reflection created successfully.",
+            data=serializer.data
+        )
+        
+    def update(self, request, *args, **kwargs):
+        """
+        Update a soul reflection.
+        """
+        instance = self.get_object()
+        serializer = self.serializer_class(instance, data=request.data, partial=True, context={'request': request})
+        if not serializer.is_valid():
+            return CustomErrorResponse(
+                message=serializer.errors,
+                status=400
+            )
+        validated_data = serializer.validated_data
+        serializer.save(**validated_data)
+        return CustomSuccessResponse(
+            message="Soul reflection updated successfully.",
+            data=serializer.data
+        )
+        
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Retrieve a soul reflection.
+        """ 
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return CustomSuccessResponse(data=serializer.data)
+    
+    def list(self, request, *args, **kwargs):
+        """
+        List all soul reflections.
         """
         queryset = self.filter_queryset(self.get_queryset())
         page = self.paginate_queryset(queryset)

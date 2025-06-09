@@ -31,3 +31,9 @@ class WindDownRitualLogAdmin(admin.ModelAdmin):
     search_fields = ('mind_space', 'reflection', 'ritual_type')
     list_display = ( 'mind_space', 'ritual_type')
     ordering = ('-created_at',) 
+    
+@admin.register(SoulReflection)
+class SoulReflectionAdmin(admin.ModelAdmin):
+    search_fields = ('mind_space', 'tag', 'reflection')
+    list_display = ( 'mind_space', 'tag')
+    ordering = ('-created_at',) 

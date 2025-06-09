@@ -94,4 +94,17 @@ class WindDownRitualLog(BaseModel):
 
     def __str__(self):
         return f'{self.mind_space.user.email} - {self.ritual_type}'
+    
+class SoulReflection(BaseModel):
+    mind_space = models.ForeignKey(MindSpaceProfile, on_delete=models.SET_NULL, null=True, blank=True)
+    reflection = models.TextField()
+    tag = models.CharField(max_length=30, choices=TagChoices)
+    country = models.CharField(max_length=100, blank=True, null=True)
+    city = models.CharField(max_length=100, blank=True, null=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Reflection from {self.city or 'Somewhere'}"
 

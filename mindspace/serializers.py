@@ -74,3 +74,14 @@ class WindDownRitualLogSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data['mind_space'] = self.context['request'].user.mind_space_profile
         return super().create(validated_data)
+    
+class SoulReflectionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SoulReflection
+        fields = ['id', 'reflection', 'tag', 'country', 'city', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+    def create(self, validated_data):
+        user = self.context['request'].user
+        validated_data['mind_space'] = user.mind_space_profile
+        return super().create(validated_data)

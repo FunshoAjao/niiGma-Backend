@@ -35,3 +35,8 @@ class RitualTypeChoices(models.TextChoices):
     Breathing = "breathing", "Breathing"
     Visualization = "visualization", "Visualization"
     
+class TagChoices(models.TextChoices):
+    Hope = "hope", "Hope"
+    Love = "love", "Love"
+    Grief = "grief", "Grief"
+    Clarity = "clarity", "Clarity"

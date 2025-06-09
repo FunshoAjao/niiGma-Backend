@@ -7,5 +7,6 @@ router.register(r'mood_mirror', MoodMirrorEntryViewSet, basename='mood_mirror')
 router.register(r'soundscape', SoundscapePlayViewSet, basename='soundscape')
 router.register(r'sleep_journal', SleepJournalEntryViewSet, basename='sleep_journal')
 router.register(r'wind_down', WindDownRitualLogViewSet, basename='wind_down')
+router.register(r'soul_reflection', SoulReflectionViewSet, basename='soul_reflection')
 
 urlpatterns = router.urls
