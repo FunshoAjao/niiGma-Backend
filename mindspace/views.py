@@ -41,6 +41,8 @@ class MindSpaceViewSet(viewsets.ModelViewSet):
         """
         Return only mood entries related to the authenticated user's mind space.
         """
+        if not hasattr(self.request.user, "mind_space_profile"):
+            return SoundscapePlay.objects.none()
         return MoodMirrorEntry.objects.filter(
             mind_space__user=self.request.user
         ).order_by('-created_at')
@@ -344,7 +346,7 @@ class MoodMirrorEntryViewSet(viewsets.ModelViewSet):
             return CustomErrorResponse(message=str(e), status=500)
         
 class SoundscapePlayViewSet(viewsets.ModelViewSet):
-    queryset = SoundscapePlay.objects.all().order_by('-created_at')
+    queryset = SoundscapePlay.objects.all().order_by('is_liked', '-created_at')
     serializer_class = SoundscapePlaySerializer
     permission_classes = [IsAuthenticated]
 
@@ -369,6 +371,8 @@ class SoundscapePlayViewSet(viewsets.ModelViewSet):
         })
     
     def get_queryset(self):
+        if not hasattr(self.request.user, "mind_space_profile"):
+            return SoundscapePlay.objects.none()
         return SoundscapePlay.objects.filter(mind_space=self.request.user.mind_space_profile)
     
     def create(self, request, *args, **kwargs):
@@ -420,6 +424,24 @@ class SoundscapePlayViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         serializer = self.get_serializer(instance)
         return CustomSuccessResponse(data=serializer.data)
+    
+    @action(
+        methods=["put"],
+        detail=False,
+        url_path="like_sound/(?P<id>[^/.]+)",
+        permission_classes=[IsAuthenticated],
+        serializer_class=None
+    )
+    def like_sound(self, request, *args, **kwargs):
+        sound_id = kwargs['id']
+        try:
+            sound = SoundscapePlay.objects.get(id=sound_id)
+        except SoundscapePlay.DoesNotExist:
+            return CustomErrorResponse(message="Resource not found!")
+        sound.is_liked = True
+        sound.save()
+        serializer = SoundscapePlaySerializer(sound).data
+        return CustomSuccessResponse(message=f"{sound.soundscape.name} liked successfully!", data= serializer)
 
 
 class SleepJournalEntryViewSet(viewsets.ModelViewSet):
@@ -448,6 +470,8 @@ class SleepJournalEntryViewSet(viewsets.ModelViewSet):
         })
 
     def get_queryset(self):
+        if not hasattr(self.request.user, "mind_space_profile"):
+            return SoundscapePlay.objects.none()
         return SleepJournalEntry.objects.filter(mind_space=self.request.user.mind_space_profile)
     
     def create(self, request, *args, **kwargs):
@@ -533,6 +557,8 @@ class WindDownRitualLogViewSet(viewsets.ModelViewSet):
         })
         
     def get_queryset(self):
+        if not hasattr(self.request.user, "mind_space_profile"):
+            return SoundscapePlay.objects.none()
         return WindDownRitualLog.objects.filter(mind_space=self.request.user.mind_space_profile)
     
     def create(self, request, *args, **kwargs):
@@ -701,6 +727,8 @@ class ResilienceReplayViewSet(viewsets.ModelViewSet):
         })
 
     def get_queryset(self):
+        if not hasattr(self.request.user, "mind_space_profile"):
+            return SoundscapePlay.objects.none()
         return ResilienceReplay.objects.filter(
             mind_space=self.request.user.mind_space_profile
         ).order_by('-created_at')
@@ -791,6 +819,8 @@ class WhisperViewSet(viewsets.ModelViewSet):
         })
 
     def get_queryset(self):
+        if not hasattr(self.request.user, "mind_space_profile"):
+            return SoundscapePlay.objects.none()
         queryset = super().get_queryset()
         filter_type = self.request.query_params.get('filter')
 
