@@ -21,6 +21,22 @@ class OpenAIClient:
                     {"message": f"Error: {str(e)}", "status":"failed"},
                     code=400
                 )
+            
+    @staticmethod
+    def generate_response_list(prompt: str):
+        try:
+            response = client.chat.completions.create(model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You are a helpful wellness assistant."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7)
+            return response.choices[0].message.content
+        except Exception as e:
+            raise serializers.ValidationError(
+                    {"message": f"Error: {str(e)}", "status":"failed"},
+                    code=400
+                )
 
     @staticmethod
     def generate_daily_meal_plan(prompt):

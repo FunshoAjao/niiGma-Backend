@@ -20,7 +20,7 @@ class SymptomLocation(BaseModel):
 
 class Symptom(BaseModel):
     location = models.ForeignKey(SymptomLocation, on_delete=models.CASCADE, related_name='symptoms')
-    name = models.CharField(max_length=100)  # e.g. "Headache", "Cough"
+    symptom_names = models.JSONField()  # A list of strings e.g. "Headache", "Cough"
     description = models.TextField(blank=True)
     started_on = models.CharField(max_length=50)  # e.g. "Yesterday"
     severity = models.CharField(max_length=20)  # e.g. "Mild", "Moderate", "Severe"
@@ -29,7 +29,7 @@ class Symptom(BaseModel):
     notes = models.TextField(blank=True)
 
     def __str__(self):
-        return f"{self.name} - {self.location.body_area}"
+        return f"{self.location.body_area}: {', '.join(self.symptom_names)}"
 
 class SymptomAnalysis(BaseModel):
     session = models.OneToOneField(SymptomSession, on_delete=models.CASCADE, related_name='analysis')

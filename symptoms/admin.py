@@ -1,3 +1,37 @@
 from django.contrib import admin
+from .models import SymptomSession, SymptomLocation, Symptom, SymptomAnalysis
 
-# Register your models here.
+
+@admin.register(SymptomSession)
+class SymptomSessionAdmin(admin.ModelAdmin):
+    list_display = ('id', 'user', 'biological_sex', 'age', 'created_at')
+    search_fields = ('user__username', 'user__email')
+    list_filter = ('biological_sex', 'created_at')
+    ordering = ('-created_at',)
+
+
+@admin.register(SymptomLocation)
+class SymptomLocationAdmin(admin.ModelAdmin):
+    list_display = ('id', 'session', 'body_area', 'created_at')
+    search_fields = ('body_area', 'session__user__username')
+    list_filter = ('body_area',)
+    ordering = ('-created_at',)
+
+
+@admin.register(Symptom)
+class SymptomAdmin(admin.ModelAdmin):
+    list_display = ('id', 'location', 'get_symptom_names', 'severity', 'started_on', 'created_at')
+    search_fields = ('location__body_area', 'symptom_names')
+    list_filter = ('severity', 'sensation', 'started_on')
+    ordering = ('-created_at',)
+
+    def get_symptom_names(self, obj):
+        return ", ".join(obj.symptom_names)
+    get_symptom_names.short_description = 'Symptoms'
+
+
+@admin.register(SymptomAnalysis)
+class SymptomAnalysisAdmin(admin.ModelAdmin):
+    list_display = ('id', 'session', 'created_at')
+    search_fields = ('session__user__username',)
+    ordering = ('-created_at',)

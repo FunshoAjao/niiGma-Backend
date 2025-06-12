@@ -2,12 +2,18 @@ from rest_framework import serializers
 from .models import SymptomSession, SymptomLocation, Symptom, SymptomAnalysis
 
 class SymptomSerializer(serializers.ModelSerializer):
+    symptom_names = serializers.ListField(
+        child=serializers.CharField(),
+        allow_empty=False
+    )
+
     class Meta:
         model = Symptom
         fields = [
-            'id', 'location', 'name', 'description', 'started_on',
-            'severity', 'sensation', 'worsens_with', 'notes'
+            'id', 'location', 'symptom_names', 'description',
+            'started_on', 'severity', 'sensation', 'worsens_with', 'notes', 'created_at'
         ]
+        read_only_fields = ['created_at']
 
 
 class SymptomLocationSerializer(serializers.ModelSerializer):
@@ -15,7 +21,8 @@ class SymptomLocationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SymptomLocation
-        fields = ['id', 'session', 'body_area', 'symptoms']
+        fields = ['id', 'session', 'body_area', 'symptoms', 'created_at']
+        read_only_fields = ['created_at']
 
 
 class SymptomSessionSerializer(serializers.ModelSerializer):
@@ -23,16 +30,15 @@ class SymptomSessionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SymptomSession
-        fields = ['id', 'user', 'created_at', 'biological_sex', 'age', 'locations']
+        fields = ['id', 'user', 'biological_sex', 'age', 'locations', 'created_at']
         read_only_fields = ['user', 'created_at']
 
 
 class SymptomAnalysisSerializer(serializers.ModelSerializer):
-    session = SymptomSessionSerializer(read_only=True)
-
     class Meta:
         model = SymptomAnalysis
         fields = ['id', 'session', 'possible_causes', 'advice', 'created_at']
+        read_only_fields = ['created_at']
 
 class BodyPartsSerializer(serializers.Serializer):
     body_parts = serializers.ListField(required=True)
