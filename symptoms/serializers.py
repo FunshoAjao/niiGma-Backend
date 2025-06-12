@@ -33,3 +33,9 @@ class SymptomAnalysisSerializer(serializers.ModelSerializer):
     class Meta:
         model = SymptomAnalysis
         fields = ['id', 'session', 'possible_causes', 'advice', 'created_at']
+
+class BodyPartsSerializer(serializers.Serializer):
+    body_parts = serializers.ListField(required=True)
+    
+class BodyPartSerializer(serializers.Serializer):
+    body_part = serializers.CharField(required=True)

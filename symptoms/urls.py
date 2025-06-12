@@ -4,8 +4,8 @@ from .views import SymptomSessionViewSet, SymptomLocationViewSet, SymptomViewSet
 
 router = DefaultRouter()
 router.register(r'sessions', SymptomSessionViewSet, basename='session')
-router.register(r'locations', SymptomLocationViewSet, basename='location')
-router.register(r'symptoms', SymptomViewSet, basename='symptom')
+router.register(r'body_locations', SymptomLocationViewSet, basename='body_location')
+router.register(r'body_symptoms', SymptomViewSet, basename='body_symptom')
 
 urlpatterns = [
     path('', include(router.urls)),

@@ -305,6 +305,7 @@ class UserViewSet(viewsets.ModelViewSet):
                     "is_superuser": user.is_superuser,
                     "is_staff": user.is_staff,
                     "age": user.age,
+                    "gender":user.gender,
                     "account_verified": user.account_verified,
                     "account_verified_at": user.account_verified_at.isoformat() if user.account_verified_at else None,
                     "created_at": user.created_at.isoformat() if user.created_at else None,
