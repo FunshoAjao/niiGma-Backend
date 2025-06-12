@@ -311,6 +311,10 @@ class UserViewSet(viewsets.ModelViewSet):
                     "updated_at": user.updated_at.isoformat() if user.updated_at else None,
                     "avatar_url": user.avatar_url if hasattr(user, "avatar_url") else None,
                     "has_completed_onboarding": user.has_completed_onboarding,
+                    "is_calories_setup": user.is_calories_setup,
+                    "is_mind_space_setup":user.is_mind_space_setup,
+                    "is_ovulation_tracker_setup":user.is_ovulation_tracker_setup,
+                    "is_trivia_setup":user.is_trivia_setup,
                     "onboarding_completed_at": user.onboarding_completed_at.isoformat() if user.onboarding_completed_at else None,
                 })
         except Exception as e:

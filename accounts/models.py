@@ -109,6 +109,10 @@ class User(AbstractBaseUser, PermissionsMixin):
         today = date.today()
         dob = self.date_of_birth.date()
         return today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+    
+    @property
+    def full_name(self):
+        return self.first_name + ' ' + self.last_name
 
 
     def __str__(self):
