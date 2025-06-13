@@ -276,11 +276,8 @@ class UserViewSet(viewsets.ModelViewSet):
             refresh_token = request.data["refresh_token"]
             user_service = UserService()
             user_service.logout(refresh_token)
-            data = {
-                 "message": "You are logged out",
-                 "status" : "success"
-            }
-            return CustomSuccessResponse(data, status=status.HTTP_408_REQUEST_TIMEOUT)
+            
+            return CustomSuccessResponse(message="Logged out successfully!", status=status.HTTP_408_REQUEST_TIMEOUT)
         except Exception as e:
             return CustomErrorResponse(message=e.args[0])
 

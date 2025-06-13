@@ -13,6 +13,12 @@ from django.core.exceptions import ObjectDoesNotExist
 from decouple import config
 import logging
 logger = logging.getLogger(__name__)
+from rest_framework.exceptions import APIException
+
+class VerificationFailed(APIException):
+    status_code = 400
+    default_detail = "Invalid or expired verification code"
+    default_code = "verification_failed"
 
 class UserService:
     _settings_config = None
@@ -110,10 +116,7 @@ class UserService:
             logger.info(f"User found in database: {self.user.email}")
         except ObjectDoesNotExist:
             logger.error(f"User not found in database: {email}")
-            raise serializers.ValidationError(
-                {"message": "User does not exist", "status":"failed"},
-                code=400
-            )
+            raise VerificationFailed("User does not exist.")
 
         cached_code = cache.get(email)
         logger.info(f"Cached verification code for {email}: {cached_code}")
@@ -137,10 +140,7 @@ class UserService:
                 return self.user, self.__get_tokens_for_user()
 
         logger.error(f"Invalid or expired verification code for {email}")
-        raise serializers.ValidationError(
-                {"message": "Invalid or expired verification code", "status":"failed"},
-                code=400
-            )
+        raise VerificationFailed("Invalid or expired verification code")
 
     def login(self, email, password):
         logger.info(f"Attempting login for email: {email}")
