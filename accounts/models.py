@@ -1,5 +1,4 @@
 from datetime import date
-from tkinter import CENTER
 import uuid
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
