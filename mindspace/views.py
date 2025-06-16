@@ -23,7 +23,7 @@ class MindSpaceViewSet(viewsets.ModelViewSet):
             'next': self.paginator.get_next_link(),
             'previous': self.paginator.get_previous_link(),
             'status': 'success',
-            'entity': data,
+            'data': data,
             'message': ''
         })
 
@@ -33,7 +33,7 @@ class MindSpaceViewSet(viewsets.ModelViewSet):
             'next': None,
             'previous': None,
             'status': 'success',
-            'entity': data,
+            'data': data,
             'message': 'No project records found.'
         })
 
@@ -115,7 +115,7 @@ class MoodMirrorEntryViewSet(viewsets.ModelViewSet):
             'next': self.paginator.get_next_link(),
             'previous': self.paginator.get_previous_link(),
             'status': 'success',
-            'entity': data,
+            'data': data,
             'message': ''
         })
 
@@ -125,7 +125,7 @@ class MoodMirrorEntryViewSet(viewsets.ModelViewSet):
             'next': None,
             'previous': None,
             'status': 'success',
-            'entity': data,
+            'data': data,
             'message': 'No project records found.'
         })
 
@@ -356,7 +356,7 @@ class SoundscapePlayViewSet(viewsets.ModelViewSet):
             'next': self.paginator.get_next_link(),
             'previous': self.paginator.get_previous_link(),
             'status': 'success',
-            'entity': data,
+            'data': data,
             'message': ''
         })
 
@@ -366,7 +366,7 @@ class SoundscapePlayViewSet(viewsets.ModelViewSet):
             'next': None,
             'previous': None,
             'status': 'success',
-            'entity': data,
+            'data': data,
             'message': 'No project records found.'
         })
     
@@ -455,7 +455,7 @@ class SleepJournalEntryViewSet(viewsets.ModelViewSet):
             'next': self.paginator.get_next_link(),
             'previous': self.paginator.get_previous_link(),
             'status': 'success',
-            'entity': data,
+            'data': data,
             'message': ''
         })
 
@@ -465,7 +465,7 @@ class SleepJournalEntryViewSet(viewsets.ModelViewSet):
             'next': None,
             'previous': None,
             'status': 'success',
-            'entity': data,
+            'data': data,
             'message': 'No project records found.'
         })
 
@@ -542,7 +542,7 @@ class WindDownRitualLogViewSet(viewsets.ModelViewSet):
             'next': self.paginator.get_next_link(),
             'previous': self.paginator.get_previous_link(),
             'status': 'success',
-            'entity': data,
+            'data': data,
             'message': ''
         })
 
@@ -552,7 +552,7 @@ class WindDownRitualLogViewSet(viewsets.ModelViewSet):
             'next': None,
             'previous': None,
             'status': 'success',
-            'entity': data,
+            'data': data,
             'message': 'No project records found.'
         })
         
@@ -628,7 +628,7 @@ class SoulReflectionViewSet(viewsets.ModelViewSet):
             'next': self.paginator.get_next_link(),
             'previous': self.paginator.get_previous_link(),
             'status': 'success',
-            'entity': data,
+            'data': data,
             'message': ''
         })
 
@@ -638,7 +638,7 @@ class SoulReflectionViewSet(viewsets.ModelViewSet):
             'next': None,
             'previous': None,
             'status': 'success',
-            'entity': data,
+            'data': data,
             'message': 'No project records found.'
         })
 
@@ -712,7 +712,7 @@ class ResilienceReplayViewSet(viewsets.ModelViewSet):
             'next': self.paginator.get_next_link(),
             'previous': self.paginator.get_previous_link(),
             'status': 'success',
-            'entity': data,
+            'data': data,
             'message': ''
         })
 
@@ -722,7 +722,7 @@ class ResilienceReplayViewSet(viewsets.ModelViewSet):
             'next': None,
             'previous': None,
             'status': 'success',
-            'entity': data,
+            'data': data,
             'message': 'No project records found.'
         })
 
@@ -804,7 +804,7 @@ class WhisperViewSet(viewsets.ModelViewSet):
             'next': self.paginator.get_next_link(),
             'previous': self.paginator.get_previous_link(),
             'status': 'success',
-            'entity': data,
+            'data': data,
             'message': ''
         })
 
@@ -814,7 +814,7 @@ class WhisperViewSet(viewsets.ModelViewSet):
             'next': None,
             'previous': None,
             'status': 'success',
-            'entity': data,
+            'data': data,
             'message': 'No project records found.'
         })
 
@@ -914,7 +914,7 @@ class ThriveToolViewSet(viewsets.ModelViewSet):
             'next': self.paginator.get_next_link(),
             'previous': self.paginator.get_previous_link(),
             'status': 'success',
-            'entity': data,
+            'data': data,
             'message': ''
         })
 
@@ -924,7 +924,7 @@ class ThriveToolViewSet(viewsets.ModelViewSet):
             'next': None,
             'previous': None,
             'status': 'success',
-            'entity': data,
+            'data': data,
             'message': 'No project records found.'
         })
 

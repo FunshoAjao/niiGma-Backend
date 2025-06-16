@@ -41,7 +41,7 @@ class UserViewSet(viewsets.ModelViewSet):
             'next': self.paginator.get_next_link(),
             'previous': self.paginator.get_previous_link(),
             'status': 'success',
-            'entity': data,
+            'data': data,
             'message': ''
         })
 
@@ -51,7 +51,7 @@ class UserViewSet(viewsets.ModelViewSet):
             'next': None,
             'previous': None,
             'status': 'success',
-            'entity': data,
+            'data': data,
             'message': 'No staff records found.'
         })
 
@@ -513,7 +513,7 @@ class PromptHistoryView(ListAPIView):
             'next': self.paginator.get_next_link(),
             'previous': self.paginator.get_previous_link(),
             'status': 'success',
-            'entity': data,
+            'data': data,
             'message': ''
         })
 
@@ -523,7 +523,7 @@ class PromptHistoryView(ListAPIView):
             'next': None,
             'previous': None,
             'status': 'success',
-            'entity': data,
+            'data': data,
             'message': 'No staff records found.'
         })
     
