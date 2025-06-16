@@ -385,6 +385,10 @@ class SoundscapePlayViewSet(viewsets.ModelViewSet):
                 message=serializer.errors,
                 status=400
             )
+        mind_space_profile = getattr(request.user, 'mind_space_profile', None)
+        if mind_space_profile is None:
+            return CustomErrorResponse(message=f"{request.user} is yet to create a mind space.")
+
         validated_data = serializer.validated_data
         serializer.save(**validated_data)
         return CustomSuccessResponse(
@@ -441,7 +445,11 @@ class SoundscapePlayViewSet(viewsets.ModelViewSet):
         sound.is_liked = True
         sound.save()
         serializer = SoundscapePlaySerializer(sound).data
-        return CustomSuccessResponse(message=f"{sound.soundscape.name} liked successfully!", data= serializer)
+        return CustomSuccessResponse(
+            message=f"{getattr(sound.soundscape, 'name', '')} liked successfully!",
+            data=serializer
+        )
+
 
 
 class SleepJournalEntryViewSet(viewsets.ModelViewSet):
@@ -484,6 +492,9 @@ class SleepJournalEntryViewSet(viewsets.ModelViewSet):
                 message=serializer.errors,
                 status=400
             )
+        mind_space_profile = getattr(request.user, 'mind_space_profile', None)
+        if mind_space_profile is None:
+            return CustomErrorResponse(message=f"{request.user} is yet to create a mind space.")
         validated_data = serializer.validated_data
         serializer.save(**validated_data)
         return CustomSuccessResponse(
@@ -502,6 +513,9 @@ class SleepJournalEntryViewSet(viewsets.ModelViewSet):
                 message=serializer.errors,
                 status=400
             )
+        mind_space_profile = getattr(request.user, 'mind_space_profile', None)
+        if mind_space_profile is None:
+            return CustomErrorResponse(message=f"{request.user} is yet to create a mind space.")
         validated_data = serializer.validated_data
         serializer.save(**validated_data)
         return CustomSuccessResponse(
@@ -571,6 +585,9 @@ class WindDownRitualLogViewSet(viewsets.ModelViewSet):
                 message=serializer.errors,
                 status=400
             )
+        mind_space_profile = getattr(request.user, 'mind_space_profile', None)
+        if mind_space_profile is None:
+            return CustomErrorResponse(message=f"{request.user} is yet to create a mind space.")
         validated_data = serializer.validated_data
         serializer.save(**validated_data)
         return CustomSuccessResponse(
@@ -655,6 +672,9 @@ class SoulReflectionViewSet(viewsets.ModelViewSet):
                 message=serializer.errors,
                 status=400
             )
+        mind_space_profile = getattr(request.user, 'mind_space_profile', None)
+        if mind_space_profile is None:
+            return CustomErrorResponse(message=f"{request.user} is yet to create a mind space.")
         validated_data = serializer.validated_data
         serializer.save(**validated_data)
         return CustomSuccessResponse(
@@ -743,6 +763,9 @@ class ResilienceReplayViewSet(viewsets.ModelViewSet):
                 message=serializer.errors,
                 status=400
             )
+        mind_space_profile = getattr(request.user, 'mind_space_profile', None)
+        if mind_space_profile is None:
+            return CustomErrorResponse(message=f"{request.user} is yet to create a mind space.")
         if request.user.gender != Gender.FEMALE:
             return CustomErrorResponse(message="Only females are allowed to use this platform")
         validated_data = serializer.validated_data
@@ -763,6 +786,9 @@ class ResilienceReplayViewSet(viewsets.ModelViewSet):
                 message=serializer.errors,
                 status=400
             )
+        mind_space_profile = getattr(request.user, 'mind_space_profile', None)
+        if mind_space_profile is None:
+            return CustomErrorResponse(message=f"{request.user} is yet to create a mind space.")
         if request.user.gender != Gender.FEMALE:
             return CustomErrorResponse(message="Only females are allowed to use this platform")
         validated_data = serializer.validated_data
@@ -852,6 +878,9 @@ class WhisperViewSet(viewsets.ModelViewSet):
                 message=serializer.errors,
                 status=400
             )
+        mind_space_profile = getattr(request.user, 'mind_space_profile', None)
+        if mind_space_profile is None:
+            return CustomErrorResponse(message=f"{request.user} is yet to create a mind space.")
         if request.user.gender != Gender.FEMALE:
             return CustomErrorResponse(message="Only females are allowed to use this platform")
         validated_data = serializer.validated_data

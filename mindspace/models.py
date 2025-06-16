@@ -61,7 +61,10 @@ class SoundscapePlay(BaseModel):
     duration_played = models.IntegerField(blank=True, null=True)
 
     def __str__(self):
-        return f"{self.mind_space.user.email} played {self.soundscape.name}"
+        user_email = getattr(self.mind_space.user, "email", "Unknown User") if self.mind_space else "Unknown User"
+        sound_name = getattr(self.soundscape, "name", "") if self.soundscape else ""
+        return f"{user_email} played {sound_name}"
+
 
 class SleepJournalEntry(BaseModel):
     mind_space = models.ForeignKey(MindSpaceProfile, on_delete=models.CASCADE, related_name='sleep_journals')
