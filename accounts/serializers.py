@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from accounts.choices import DeviceType
+from accounts.choices import DeviceType, Gender
 from .models import PromptHistory, User
 
 
@@ -11,6 +11,7 @@ class UserSerializer(serializers.ModelSerializer):
     date_of_birth = serializers.DateTimeField(required=False)
     height = serializers.FloatField(required=False)
     height_unit = serializers.ChoiceField(required=False, choices=["cm", "inches", "ft"])
+    gender = serializers.ChoiceField(required=False, choices=Gender)
     referral_source = serializers.CharField(required=False, allow_blank=True)
     password = serializers.CharField(write_only=True, required=True)
     email = serializers.EmailField(required=True, validators=[])
