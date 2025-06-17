@@ -37,30 +37,40 @@ class UserViewSet(viewsets.ModelViewSet):
 
     def get_paginated_response(self, data):
         return Response({
-            'count': self.paginator.page.paginator.count,
-            'next': self.paginator.get_next_link(),
-            'previous': self.paginator.get_previous_link(),
             'status': 'success',
-            'data': data,
-            'message': ''
+            'message': '',
+            'data': {
+                'count': self.paginator.page.paginator.count,
+                'next': self.paginator.get_next_link(),
+                'previous': self.paginator.get_previous_link(),
+                'results': data
+            }
         })
 
     def get_paginated_response_for_none_records(self, data):
         return Response({
-            'count': 0,
-            'next': None,
-            'previous': None,
             'status': 'success',
-            'data': data,
-            'message': 'No staff records found.'
+            'message': 'No user records found.',
+            'data': {
+                'count': 0,
+                'next': None,
+                'previous': None,
+                'results': data
+            }
         })
+
 
     def create(self, request, *args, **kwargs):
         raise NotFound()
 
     def list(self, request, *args, **kwargs):
         """Get users created"""
-        queryset = self.get_queryset()
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
         serializer = self.get_serializer(queryset, many=True)
         return CustomSuccessResponse(data=serializer.data)
 

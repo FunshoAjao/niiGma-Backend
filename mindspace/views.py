@@ -19,23 +19,28 @@ class MindSpaceViewSet(viewsets.ModelViewSet):
 
     def get_paginated_response(self, data):
         return Response({
-            'count': self.paginator.page.paginator.count,
-            'next': self.paginator.get_next_link(),
-            'previous': self.paginator.get_previous_link(),
             'status': 'success',
-            'data': data,
-            'message': ''
+            'message': '',
+            'data': {
+                'count': self.paginator.page.paginator.count,
+                'next': self.paginator.get_next_link(),
+                'previous': self.paginator.get_previous_link(),
+                'results': data
+            }
         })
 
     def get_paginated_response_for_none_records(self, data):
         return Response({
-            'count': 0,
-            'next': None,
-            'previous': None,
             'status': 'success',
-            'data': data,
-            'message': 'No project records found.'
+            'message': 'No record found.',
+            'data': {
+                'count': 0,
+                'next': None,
+                'previous': None,
+                'results': data
+            }
         })
+
 
     def get_queryset(self):
         """
@@ -111,22 +116,26 @@ class MoodMirrorEntryViewSet(viewsets.ModelViewSet):
 
     def get_paginated_response(self, data):
         return Response({
-            'count': self.paginator.page.paginator.count,
-            'next': self.paginator.get_next_link(),
-            'previous': self.paginator.get_previous_link(),
             'status': 'success',
-            'data': data,
-            'message': ''
+            'message': '',
+            'data': {
+                'count': self.paginator.page.paginator.count,
+                'next': self.paginator.get_next_link(),
+                'previous': self.paginator.get_previous_link(),
+                'results': data
+            }
         })
 
     def get_paginated_response_for_none_records(self, data):
         return Response({
-            'count': 0,
-            'next': None,
-            'previous': None,
             'status': 'success',
-            'data': data,
-            'message': 'No project records found.'
+            'message': 'No record found.',
+            'data': {
+                'count': 0,
+                'next': None,
+                'previous': None,
+                'results': data
+            }
         })
 
     def get_queryset(self):
@@ -352,22 +361,26 @@ class SoundscapePlayViewSet(viewsets.ModelViewSet):
 
     def get_paginated_response(self, data):
         return Response({
-            'count': self.paginator.page.paginator.count,
-            'next': self.paginator.get_next_link(),
-            'previous': self.paginator.get_previous_link(),
             'status': 'success',
-            'data': data,
-            'message': ''
+            'message': '',
+            'data': {
+                'count': self.paginator.page.paginator.count,
+                'next': self.paginator.get_next_link(),
+                'previous': self.paginator.get_previous_link(),
+                'results': data
+            }
         })
 
     def get_paginated_response_for_none_records(self, data):
         return Response({
-            'count': 0,
-            'next': None,
-            'previous': None,
             'status': 'success',
-            'data': data,
-            'message': 'No project records found.'
+            'message': 'No record found.',
+            'data': {
+                'count': 0,
+                'next': None,
+                'previous': None,
+                'results': data
+            }
         })
     
     def get_queryset(self):
@@ -459,22 +472,26 @@ class SleepJournalEntryViewSet(viewsets.ModelViewSet):
 
     def get_paginated_response(self, data):
         return Response({
-            'count': self.paginator.page.paginator.count,
-            'next': self.paginator.get_next_link(),
-            'previous': self.paginator.get_previous_link(),
             'status': 'success',
-            'data': data,
-            'message': ''
+            'message': '',
+            'data': {
+                'count': self.paginator.page.paginator.count,
+                'next': self.paginator.get_next_link(),
+                'previous': self.paginator.get_previous_link(),
+                'results': data
+            }
         })
 
     def get_paginated_response_for_none_records(self, data):
         return Response({
-            'count': 0,
-            'next': None,
-            'previous': None,
             'status': 'success',
-            'data': data,
-            'message': 'No project records found.'
+            'message': 'No record found.',
+            'data': {
+                'count': 0,
+                'next': None,
+                'previous': None,
+                'results': data
+            }
         })
 
     def get_queryset(self):
@@ -552,22 +569,26 @@ class WindDownRitualLogViewSet(viewsets.ModelViewSet):
 
     def get_paginated_response(self, data):
         return Response({
-            'count': self.paginator.page.paginator.count,
-            'next': self.paginator.get_next_link(),
-            'previous': self.paginator.get_previous_link(),
             'status': 'success',
-            'data': data,
-            'message': ''
+            'message': '',
+            'data': {
+                'count': self.paginator.page.paginator.count,
+                'next': self.paginator.get_next_link(),
+                'previous': self.paginator.get_previous_link(),
+                'results': data
+            }
         })
 
     def get_paginated_response_for_none_records(self, data):
         return Response({
-            'count': 0,
-            'next': None,
-            'previous': None,
             'status': 'success',
-            'data': data,
-            'message': 'No project records found.'
+            'message': 'No record found.',
+            'data': {
+                'count': 0,
+                'next': None,
+                'previous': None,
+                'results': data
+            }
         })
         
     def get_queryset(self):
@@ -641,22 +662,26 @@ class SoulReflectionViewSet(viewsets.ModelViewSet):
     
     def get_paginated_response(self, data):
         return Response({
-            'count': self.paginator.page.paginator.count,
-            'next': self.paginator.get_next_link(),
-            'previous': self.paginator.get_previous_link(),
             'status': 'success',
-            'data': data,
-            'message': ''
+            'message': '',
+            'data': {
+                'count': self.paginator.page.paginator.count,
+                'next': self.paginator.get_next_link(),
+                'previous': self.paginator.get_previous_link(),
+                'results': data
+            }
         })
 
     def get_paginated_response_for_none_records(self, data):
         return Response({
-            'count': 0,
-            'next': None,
-            'previous': None,
             'status': 'success',
-            'data': data,
-            'message': 'No project records found.'
+            'message': 'No record found.',
+            'data': {
+                'count': 0,
+                'next': None,
+                'previous': None,
+                'results': data
+            }
         })
 
     def get_queryset(self):
@@ -728,22 +753,26 @@ class ResilienceReplayViewSet(viewsets.ModelViewSet):
     
     def get_paginated_response(self, data):
         return Response({
-            'count': self.paginator.page.paginator.count,
-            'next': self.paginator.get_next_link(),
-            'previous': self.paginator.get_previous_link(),
             'status': 'success',
-            'data': data,
-            'message': ''
+            'message': '',
+            'data': {
+                'count': self.paginator.page.paginator.count,
+                'next': self.paginator.get_next_link(),
+                'previous': self.paginator.get_previous_link(),
+                'results': data
+            }
         })
 
     def get_paginated_response_for_none_records(self, data):
         return Response({
-            'count': 0,
-            'next': None,
-            'previous': None,
             'status': 'success',
-            'data': data,
-            'message': 'No project records found.'
+            'message': 'No record found.',
+            'data': {
+                'count': 0,
+                'next': None,
+                'previous': None,
+                'results': data
+            }
         })
 
     def get_queryset(self):
@@ -826,22 +855,26 @@ class WhisperViewSet(viewsets.ModelViewSet):
     
     def get_paginated_response(self, data):
         return Response({
-            'count': self.paginator.page.paginator.count,
-            'next': self.paginator.get_next_link(),
-            'previous': self.paginator.get_previous_link(),
             'status': 'success',
-            'data': data,
-            'message': ''
+            'message': '',
+            'data': {
+                'count': self.paginator.page.paginator.count,
+                'next': self.paginator.get_next_link(),
+                'previous': self.paginator.get_previous_link(),
+                'results': data
+            }
         })
 
     def get_paginated_response_for_none_records(self, data):
         return Response({
-            'count': 0,
-            'next': None,
-            'previous': None,
             'status': 'success',
-            'data': data,
-            'message': 'No project records found.'
+            'message': 'No record found.',
+            'data': {
+                'count': 0,
+                'next': None,
+                'previous': None,
+                'results': data
+            }
         })
 
     def get_queryset(self):
@@ -939,22 +972,26 @@ class ThriveToolViewSet(viewsets.ModelViewSet):
     
     def get_paginated_response(self, data):
         return Response({
-            'count': self.paginator.page.paginator.count,
-            'next': self.paginator.get_next_link(),
-            'previous': self.paginator.get_previous_link(),
             'status': 'success',
-            'data': data,
-            'message': ''
+            'message': '',
+            'data': {
+                'count': self.paginator.page.paginator.count,
+                'next': self.paginator.get_next_link(),
+                'previous': self.paginator.get_previous_link(),
+                'results': data
+            }
         })
 
     def get_paginated_response_for_none_records(self, data):
         return Response({
-            'count': 0,
-            'next': None,
-            'previous': None,
             'status': 'success',
-            'data': data,
-            'message': 'No project records found.'
+            'message': 'No record found.',
+            'data': {
+                'count': 0,
+                'next': None,
+                'previous': None,
+                'results': data
+            }
         })
 
     def get_queryset(self):
