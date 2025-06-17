@@ -110,8 +110,8 @@ class MindSpaceViewSet(viewsets.ModelViewSet):
         return CustomSuccessResponse(data=serializer.data)
 
 class MoodMirrorEntryViewSet(viewsets.ModelViewSet):
-    queryset = MindSpaceProfile.objects.all()
-    serializer_class = MindSpaceProfileSerializer
+    queryset = MoodMirrorEntry.objects.all()
+    serializer_class = MoodMirrorEntrySerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_paginated_response(self, data):
@@ -155,16 +155,11 @@ class MoodMirrorEntryViewSet(viewsets.ModelViewSet):
         if not serializer.is_valid():
             return CustomErrorResponse(message=serializer.errors)
         user = self.request.user
-        if MindSpaceProfile.objects.filter(user=user).exists():
-            print("Mind Space profile already exists for the user.")
+        if not MindSpaceProfile.objects.filter(user=user).exists():
             return CustomErrorResponse(
-                message="Mind Space profile already exists for the user.",
+                message="Mind Space profile does not exist for this user. Set up mind space",
                 status=400)
-        mindspace_profile = serializer.save(user=user)
-        user = User.objects.get(id=user.id)
-        user.is_mind_space_setup = True
-        user.save()
-        transaction.on_commit(lambda: create_sound_space_playlist.delay(mindspace_profile.id))
+        serializer.save(mind_space=user.mind_space_profile)
         return CustomSuccessResponse(
             message="Mood Mirror Entry created successfully.",
             data=serializer.data
@@ -184,7 +179,7 @@ class MoodMirrorEntryViewSet(viewsets.ModelViewSet):
         validated_data = serializer.validated_data
         serializer.save(**validated_data)
         return CustomSuccessResponse(
-            message="Mind space updated successfully.",
+            message="Mood updated successfully.",
             data=serializer.data
         )
     
