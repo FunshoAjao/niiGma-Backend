@@ -47,9 +47,9 @@ class MindSpaceViewSet(viewsets.ModelViewSet):
         Return only mood entries related to the authenticated user's mind space.
         """
         if not hasattr(self.request.user, "mind_space_profile"):
-            return SoundscapePlay.objects.none()
-        return MoodMirrorEntry.objects.filter(
-            mind_space__user=self.request.user
+            return MindSpaceProfile.objects.none()
+        return MindSpaceProfile.objects.filter(
+            user=self.request.user
         ).order_by('-created_at')
 
     @transaction.atomic
@@ -102,7 +102,7 @@ class MindSpaceViewSet(viewsets.ModelViewSet):
             return self.get_paginated_response(serializer.data)
 
         serializer = self.get_serializer(queryset, many=True)
-        return CustomSuccessResponse(data=serializer.data)
+        return self.get_paginated_response_for_none_records(data=serializer.data)
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -496,7 +496,7 @@ class SleepJournalEntryViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         if not hasattr(self.request.user, "mind_space_profile"):
-            return SoundscapePlay.objects.none()
+            return SleepJournalEntry.objects.none()
         return SleepJournalEntry.objects.filter(mind_space=self.request.user.mind_space_profile)
     
     def create(self, request, *args, **kwargs):
@@ -593,7 +593,7 @@ class WindDownRitualLogViewSet(viewsets.ModelViewSet):
         
     def get_queryset(self):
         if not hasattr(self.request.user, "mind_space_profile"):
-            return SoundscapePlay.objects.none()
+            return WindDownRitualLog.objects.none()
         return WindDownRitualLog.objects.filter(mind_space=self.request.user.mind_space_profile)
     
     def create(self, request, *args, **kwargs):
@@ -777,7 +777,7 @@ class ResilienceReplayViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         if not hasattr(self.request.user, "mind_space_profile"):
-            return SoundscapePlay.objects.none()
+            return ResilienceReplay.objects.none()
         return ResilienceReplay.objects.filter(
             mind_space=self.request.user.mind_space_profile
         ).order_by('-created_at')
@@ -879,7 +879,7 @@ class WhisperViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         if not hasattr(self.request.user, "mind_space_profile"):
-            return SoundscapePlay.objects.none()
+            return Whisper.objects.none()
         queryset = super().get_queryset()
         filter_type = self.request.query_params.get('filter')
 
