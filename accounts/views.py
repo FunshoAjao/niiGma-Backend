@@ -124,6 +124,7 @@ class UserViewSet(viewsets.ModelViewSet):
         detail=False,
         url_path="account_verification",
         permission_classes=[AllowAny],
+        authentication_classes = [],
         serializer_class=VerificationCodeSerializer
     )
     def account_verification(self, request, *args, **kwargs):
@@ -156,7 +157,7 @@ class UserViewSet(viewsets.ModelViewSet):
         permission_classes=[AllowAny],
         authentication_classes=[],
         serializer_class=UserSerializer
-)
+    )
     def user_create(self, request, *args, **kwargs):
         with transaction.atomic():
             try:
@@ -185,6 +186,7 @@ class UserViewSet(viewsets.ModelViewSet):
         detail=False,
         url_path="login",
         permission_classes=[AllowAny],
+        authentication_classes = [],
         serializer_class=LoginSerializer
     )
     def login(self, request, *args, **kwargs):
@@ -333,6 +335,7 @@ class UserViewSet(viewsets.ModelViewSet):
         detail=False,
         url_path="resend_account_verification",
         permission_classes=[AllowAny],
+        authentication_classes = [],
         serializer_class=EmailSerializer
     )
     def resend_account_verification(self, request, *args, **kwargs):
@@ -368,6 +371,8 @@ class UserViewSet(viewsets.ModelViewSet):
         methods=["post"],
         detail=False,
         url_path="initiate_password_reset",
+        permission_classes=[AllowAny],
+        authentication_classes = [],
         serializer_class=EmailSerializer
     )
     def initiate_password_reset(self, request, *args, **kwargs):
@@ -384,6 +389,8 @@ class UserViewSet(viewsets.ModelViewSet):
         methods=["post"],
         detail=False,
         url_path="confirm_password",
+        permission_classes=[AllowAny],
+        authentication_classes = [],
         serializer_class=PasswordResetConfirmationSerializer
     )
     def confirm_password(self, request, *args, **kwargs):
@@ -407,6 +414,7 @@ class UserViewSet(viewsets.ModelViewSet):
         methods=["post"],
         detail=False,
         url_path="reset_password",
+        authentication_classes = [],
         serializer_class=AccountPasswordResetSerializer
     )
     def reset_password(self, request, *args, **kwargs):
@@ -431,6 +439,7 @@ class UserViewSet(viewsets.ModelViewSet):
         methods=["post"],
         detail=False,
         url_path="resend_otp",
+        authentication_classes = [],
         serializer_class=EmailSerializer
     )
     def resend_otp(self, request, *args, **kwargs):
