@@ -912,7 +912,7 @@ class WhisperViewSet(viewsets.ModelViewSet):
         if request.user.gender != Gender.FEMALE:
             return CustomErrorResponse(message="Only females are allowed to use this platform")
         validated_data = serializer.validated_data
-        serializer.save(**validated_data)
+        serializer.save(mind_space=mind_space_profile, **validated_data)
         return CustomSuccessResponse(
             message="Whisper created successfully.",
             data=serializer.data

@@ -47,6 +47,12 @@ def custom_exception_handler(exc, context):
                 {"message": "Authentication failed", "status": "failed"},
                 status=status.HTTP_401_UNAUTHORIZED
             )
+            
+        elif response.status_code == status.HTTP_403_FORBIDDEN:
+            return Response(
+                {"message": f"{response.data['detail']}", "status": "failed"},
+                status=status.HTTP_403_FORBIDDEN
+            )
 
         return Response(
             {
