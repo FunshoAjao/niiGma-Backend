@@ -2,7 +2,9 @@ from rest_framework import viewsets, permissions
 from rest_framework.response import Response
 from rest_framework.decorators import action
 
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 from accounts.choices import Gender
+from django_filters.rest_framework import DjangoFilterBackend
 from mindspace.permissions import IsSuperAdmin
 from .services.tasks import MindSpaceAIAssistant, create_sound_space_playlist
 from .models import *
@@ -847,6 +849,7 @@ class WhisperViewSet(viewsets.ModelViewSet):
     queryset = Whisper.objects.all().order_by('-created_at')
     serializer_class = WhisperSerializer
     permission_classes = [IsAuthenticated] 
+    DjangoFilterBackend = DjangoFilterBackend
     
     def get_paginated_response(self, data):
         return Response({
@@ -873,6 +876,7 @@ class WhisperViewSet(viewsets.ModelViewSet):
         })
 
     def get_queryset(self):
+        from datetime import timedelta
         if not hasattr(self.request.user, "mind_space_profile"):
             return Whisper.objects.none()
         queryset = super().get_queryset()
@@ -881,17 +885,17 @@ class WhisperViewSet(viewsets.ModelViewSet):
         now = timezone.now()
 
         if filter_type == "today":
-            return queryset.filter(shared_at__date=now.date())
+            return queryset.filter(created_at__date=now.date())
 
         if filter_type == "yesterday":
             yesterday = now - timedelta(days=1)
             return queryset.filter(
-                shared_at__date=yesterday.date()
+                created_at__date=yesterday.date()
             )
 
         if filter_type == "lastweek":
             one_week_ago = now - timedelta(days=7)
-            return queryset.filter(shared_at__date__gte=one_week_ago.date())
+            return queryset.filter(created_at__date__gte=one_week_ago.date())
 
         # Default to all-time
         return queryset
@@ -946,6 +950,16 @@ class WhisperViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(instance)
         return CustomSuccessResponse(data=serializer.data)
     
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="filter",
+                description="Time filter: 'today', 'yesterday', or 'lastweek'",
+                required=False,
+                type=str,
+            )
+        ]
+    )
     def list(self, request, *args, **kwargs):
         """
         List all whispers.
@@ -988,6 +1002,8 @@ class ThriveToolViewSet(viewsets.ModelViewSet):
     queryset = ThriveTool.objects.all().order_by('-created_at')
     serializer_class = ThriveToolSerializer
     permission_classes = [IsAuthenticated, IsSuperAdmin]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['category']
     
     def get_paginated_response(self, data):
         return Response({

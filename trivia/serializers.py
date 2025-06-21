@@ -1,23 +1,15 @@
 from rest_framework import serializers
-from .models import TriviaProfile, TriviaQuestion, TriviaAnswer, TriviaSession
-
-class TriviaProfileSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = TriviaProfile
-        fields = '__all__'
+from .models import TriviaQuestion, TriviaSession
 
 class TriviaQuestionSerializer(serializers.ModelSerializer):
     class Meta:
         model = TriviaQuestion
-        exclude = ['correct_option', 'explanation']  # To prevent sending answer upfront
-
-class TriviaAnswerSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = TriviaAnswer
-        fields = '__all__'
-        read_only_fields = ('is_correct',)
+        fields = "__all__"
+        read_only_fields = ("session", "question_text", "choices", "correct_choice", "explanation")
 
 class TriviaSessionSerializer(serializers.ModelSerializer):
+    questions = TriviaQuestionSerializer(many=True, read_only=True)
+
     class Meta:
         model = TriviaSession
-        fields = '__all__'
+        fields = "__all__"
