@@ -875,9 +875,7 @@ class WhisperViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         if not hasattr(self.request.user, "mind_space_profile"):
             return Whisper.objects.none()
-        queryset = Whisper.objects.filter(
-            mind_space=self.request.user.mind_space_profile
-        ).order_by('-created_at')
+        queryset = super().get_queryset()
         filter_type = self.request.query_params.get('filter')
 
         now = timezone.now()
@@ -953,6 +951,30 @@ class WhisperViewSet(viewsets.ModelViewSet):
         List all whispers.
         """
         queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return CustomSuccessResponse(data=serializer.data)
+    
+    @action(
+        methods=["get"],
+        detail=False,
+        url_path="my_whispers",
+        permission_classes=[IsAuthenticated]
+    )
+    def my_whispers(self, request, *args, **kwargs):
+        """
+        List all my whispers.
+        This endpoint returns all whispers created by the authenticated user.
+        It filters the whispers based on the user's mind space and orders them by creation date.
+        :param request: The HTTP request object.
+        :return: A paginated response containing the user's whispers.
+        """
+        user = request.user
+        queryset = Whisper.objects.filter(mind_space__user=user).order_by('-created_at')
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
