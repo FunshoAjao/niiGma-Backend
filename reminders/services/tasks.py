@@ -11,6 +11,9 @@ from ..models import Reminder
 def send_due_reminders():
     now = timezone.now().time()
     reminders = Reminder.objects.filter(time=now, enabled=True)
+    if reminders.count() == 0:
+        logger.info("No reminders due at this time.")
+        return
     for reminder in reminders:
         # Trigger push/email/notification
         logger.info(f"Send reminder to {reminder.user.email}: {reminder.message}")

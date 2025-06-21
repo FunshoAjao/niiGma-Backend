@@ -10,10 +10,20 @@ from django.utils.timezone import now
 from datetime import date
 from django.db.models import Sum
 from core.celery import app as celery_app
+from celery import shared_task
+
+
+@shared_task(name="run_daily_question_sync")
+def run_daily_question_sync():
+    today = date.today()
+    if not DailyTriviaSet.objects.filter(date=today).exists():
+        questions = TriviaAIAssistant().generate_questions_ai(3)
+        DailyTriviaSet.objects.create(date=today, questions=questions)
 
 class TriviaAIAssistant:
-    def __init__(self, user):
+    def __init__(self, user=None, topic=None):
         self.user = user
+        self.topic = topic or "health and wellness"
         
     def build_prompt(self, num_questions=3):
         return f"""
@@ -36,34 +46,34 @@ class TriviaAIAssistant:
         ]
         """
         
-    def generate_questions_ai(num_questions=3):
+    def generate_questions_ai(self, num_questions=3):
         prompt = f"""
-    You are a health and wellness trivia generator.
+            You are a health and wellness trivia generator.
 
-    Generate {num_questions} multiple-choice questions to help users test their health knowledge.
+            Generate {num_questions} multiple-choice questions to help users test their health knowledge.
 
-    For each question, provide:
-    - A short question
-    - 4 answer choices labeled A, B, C, D
-    - The correct choice (just A, B, C, or D)
-    - A brief explanation for the correct answer
+            For each question, provide:
+            - A short question
+            - 4 answer choices labeled A, B, C, D
+            - The correct choice (just A, B, C, or D)
+            - A brief explanation for the correct answer
 
-    Respond in this JSON format:
+            Respond in this JSON format:
 
-    [
-    {{
-        "question": "How many hours of sleep do adults typically need?",
-        "choices": {{
-        "A": "4–5 hours",
-        "B": "6–7 hours",
-        "C": "7–9 hours",
-        "D": "10–12 hours"
-        }},
-        "correct_choice": "C",
-        "explanation": "Most adults need 7–9 hours of sleep for optimal health."
-    }},
-    ...
-    ]
+            [
+            {{
+                "question": "How many hours of sleep do adults typically need?",
+                "choices": {{
+                "A": "4–5 hours",
+                "B": "6–7 hours",
+                "C": "7–9 hours",
+                "D": "10–12 hours"
+                }},
+                "correct_choice": "C",
+                "explanation": "Most adults need 7–9 hours of sleep for optimal health."
+            }},
+            ...
+            ]
         """
 
         response = OpenAIClient.generate_response_list(prompt)

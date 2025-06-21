@@ -175,3 +175,4 @@ cython_debug/
 gcp.json
 
 .history
+celerybeat-schedule.db

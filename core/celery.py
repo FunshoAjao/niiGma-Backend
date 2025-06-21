@@ -17,6 +17,10 @@ app.conf.beat_schedule = {
         'task': 'reminders.services.tasks.send_due_reminders',
         'schedule': crontab(minute='*'),  # every minute
     },
+    'daily-trivia-sync-task': {
+        'task': 'trivia.services.tasks.run_daily_question_sync',
+        'schedule': crontab(hour=0, minute=5),  # runs daily at 00:05 AM
+    },
 }
 
 print("✅ Celery configured")
