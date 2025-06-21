@@ -41,6 +41,7 @@ SYSTEM_APP = [
     'ovulations',
     'mindspace',
     'reminders',
+    'trivia',
 ]
 
 THIRD_PARTY_APP = [

@@ -875,7 +875,9 @@ class WhisperViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         if not hasattr(self.request.user, "mind_space_profile"):
             return Whisper.objects.none()
-        queryset = super().get_queryset()
+        queryset = Whisper.objects.filter(
+            mind_space=self.request.user.mind_space_profile
+        ).order_by('-created_at')
         filter_type = self.request.query_params.get('filter')
 
         now = timezone.now()
