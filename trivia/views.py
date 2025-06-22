@@ -52,8 +52,7 @@ class TriviaSessionViewSet(viewsets.ModelViewSet):
         serializer = TriviaProfileSerializer(profile)
 
         today = timezone.now().date()
-        can_play = profile.has_logged_mood_today and profile.last_played != today
-         #(request.user.is_premium or profile.has_logged_mood_today) and profile.last_played != today
+        can_play = profile.has_used_any_feature_today and profile.last_played != today
 
         data = serializer.data
         data["can_play"] = can_play
@@ -137,7 +136,10 @@ class TriviaSessionViewSet(viewsets.ModelViewSet):
             question = TriviaQuestion.objects.get(id=question_id, session_id=pk)
         except TriviaQuestion.DoesNotExist:
             return CustomErrorResponse(message= "Invalid question.", status=404)
-
+        
+        if question.user_answer is not None:
+            return CustomErrorResponse(message="This question has already been answered.", status=400)
+        
         question.user_answer = answer
         question.is_correct = (answer == question.correct_choice)
         question.save()
@@ -148,7 +150,7 @@ class TriviaSessionViewSet(viewsets.ModelViewSet):
             session.score = session.calculate_score
             session.save()
             
-        if question.is_correct and question.user_answer is None: # not already answered to prevent double counting
+        if question.is_correct: 
             profile.coins_earned += 5
             profile.total_correct_answers += 1
             profile.save()

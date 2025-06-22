@@ -1,9 +1,11 @@
 from django.db import models
 from accounts.models import User
+from calories.models import LoggedMeal
 from common.models import BaseModel
 from mindspace.models import MoodMirrorEntry
 from django.utils import timezone
 from datetime import date
+from symptoms.models import SymptomSession
 from trivia.choices import TriviaSessionTypeChoices
 
 class TriviaProfile(BaseModel):
@@ -20,11 +22,41 @@ class TriviaProfile(BaseModel):
     
     @property
     def has_logged_mood_today(self):
-        """Check if the user has logged their mood today."""
         return MoodMirrorEntry.objects.filter(
             mind_space__user=self.user,
             date__date=timezone.now().date()
-        ).only('id').exists()
+        ).only("id").exists()
+
+    @property
+    def has_logged_calories_today(self):
+        return LoggedMeal.objects.filter(
+            user=self.user,
+            created_at__date=timezone.now().date()
+        ).only("id").exists()
+
+    @property
+    def has_used_symptom_checker_today(self):
+        return SymptomSession.objects.filter(
+            user=self.user,
+            created_at__date=timezone.now().date()
+        ).only("id").exists()
+
+    @property
+    def has_logged_ovulation_today(self):
+        # return OvulationEntry.objects.filter(
+        #     user=self.user,
+        #     created_at__date=timezone.now().date()
+        # ).only("id").exists()
+        return True  # Placeholder for actual ovulation entry check
+
+    @property
+    def has_used_any_feature_today(self):
+        return (
+            self.has_logged_mood_today or
+            self.has_logged_calories_today or
+            self.has_used_symptom_checker_today or
+            self.has_logged_ovulation_today
+        )
 
 class TriviaSession(BaseModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="trivia_sessions")
@@ -60,7 +92,6 @@ class TriviaQuestion(BaseModel):
 
 class DailyTriviaSet(BaseModel):
     date = models.DateField()
-    category = models.CharField(max_length=100)  # e.g. "general", "fitness"
     questions = models.JSONField()  # store AI-generated questions as list of dicts
 
     def __str__(self):

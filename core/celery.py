@@ -2,6 +2,7 @@ import os
 from celery import Celery
 from django.conf import settings
 from celery.schedules import crontab
+from datetime import timedelta
 
 print("🚀 Initializing Celery")
 
@@ -19,7 +20,7 @@ app.conf.beat_schedule = {
     },
     'daily-trivia-sync-task': {
         'task': 'trivia.services.tasks.run_daily_question_sync',
-        'schedule': crontab(hour=0, minute=5),  # runs daily at 00:05 AM
+        'schedule': crontab(minute=0, hour='9,17'), #'schedule': crontab(minute='*') #timedelta(days=1), #crontab(hour=5, minute=0),  # 5:00 AM daily
     },
 }
 
