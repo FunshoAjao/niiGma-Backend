@@ -14,10 +14,10 @@ app.conf.broker_connection_retry_on_startup = True
 app.autodiscover_tasks()
 
 app.conf.beat_schedule = {
-    'send-reminders-every-minute': {
-        'task': 'reminders.services.tasks.send_due_reminders',
-        'schedule': crontab(minute='*'),  # every minute
-    },
+    # 'send-reminders-every-minute': {
+    #     'task': 'reminders.services.tasks.send_due_reminders',
+    #     'schedule': crontab(minute='*'),  # every minute
+    # },
     'daily-trivia-sync-task': {
         'task': 'trivia.services.tasks.run_daily_question_sync',
         'schedule': crontab(minute=0, hour='9,17'), #'schedule': crontab(minute='*') #timedelta(days=1), #crontab(hour=5, minute=0),  # 5:00 AM daily
