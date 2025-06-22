@@ -494,7 +494,7 @@ class SleepJournalEntryViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         if not hasattr(self.request.user, "mind_space_profile"):
             return SleepJournalEntry.objects.none()
-        return SleepJournalEntry.objects.filter(mind_space=self.request.user.mind_space_profile)
+        return SleepJournalEntry.objects.filter(mind_space=self.request.user.mind_space_profile).order_by('-created_at')
     
     def create(self, request, *args, **kwargs):
         """
@@ -591,7 +591,7 @@ class WindDownRitualLogViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         if not hasattr(self.request.user, "mind_space_profile"):
             return WindDownRitualLog.objects.none()
-        return WindDownRitualLog.objects.filter(mind_space=self.request.user.mind_space_profile)
+        return WindDownRitualLog.objects.filter(mind_space=self.request.user.mind_space_profile).order_by('-created_at')
     
     def create(self, request, *args, **kwargs):
         """
@@ -682,7 +682,7 @@ class SoulReflectionViewSet(viewsets.ModelViewSet):
         })
 
     def get_queryset(self):
-        return SoulReflection.objects.all()
+        return SoulReflection.objects.all().order_by('-created_at')
 
     def create(self, request, *args, **kwargs):
         """
