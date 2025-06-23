@@ -20,7 +20,7 @@ app.conf.beat_schedule = {
     # },
     'daily-trivia-sync-task': {
         'task': 'trivia.services.tasks.run_daily_question_sync',
-        'schedule': crontab(minute=0, hour='9,17'), #'schedule': crontab(minute='*') #timedelta(days=1), #crontab(hour=5, minute=0),  # 5:00 AM daily
+        'schedule': crontab(minute='*')#'schedule': crontab(minute=0, hour='9,17'), #'schedule': crontab(minute='*') #timedelta(days=1), #crontab(hour=5, minute=0),  # 5:00 AM daily
     },
 }
 
