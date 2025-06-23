@@ -1,3 +1,4 @@
+import json
 from rest_framework import viewsets, permissions
 from rest_framework.response import Response
 from rest_framework.decorators import action
@@ -651,6 +652,39 @@ class WindDownRitualLogViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(queryset, many=True)
         return CustomSuccessResponse(data=serializer.data)
+    
+    @action(
+        methods=["get"],
+        detail=False,
+        url_path="generate_random_quotes",
+        permission_classes=[IsAuthenticated],
+    )
+    def generate_random_quotes(self, request, *args, **kwargs):
+        """
+        Generate random quotes for the wind down ritual.
+        """
+        user = request.user
+        mind_space_profile = getattr(user, 'mind_space_profile', None)
+        if mind_space_profile is None:
+            return CustomErrorResponse(message=f"{user} is yet to create a mind space.")
+        mood = MoodMirrorEntry.objects.filter(
+            mind_space=mind_space_profile
+        ).order_by('-created_at').first()
+        try:
+            raw_quotes = MindSpaceAIAssistant(
+                user, mind_space_profile
+            ).get_random_quotes_for_user(mood.mood if mood else None)
+            
+            if isinstance(raw_quotes, str):
+                try:
+                    quotes = json.loads(raw_quotes)
+                except json.JSONDecodeError:
+                    quotes = [raw_quotes]  # fallback: wrap raw string in list
+            else:
+                quotes = raw_quotes
+            return CustomSuccessResponse(data=quotes, message="Random quotes generated successfully")
+        except Exception as e:
+            return CustomErrorResponse(message=str(e), status=500)
     
 class SoulReflectionViewSet(viewsets.ModelViewSet):
     queryset = SoulReflection.objects.all().order_by('-created_at')

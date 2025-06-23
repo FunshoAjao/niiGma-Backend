@@ -193,3 +193,40 @@ class MindSpaceAIAssistant:
             )
         
         return response
+
+    def get_random_quotes_for_user(self, current_mood)-> list:
+        prompt = f"""
+            You are a motivational AI assistant.
+            Generate 7-10 short, uplifting quotes that would inspire someone feeling {current_mood}.
+            Make them positive, encouraging, and relevant to mental wellness.
+            Respond ONLY with the quotes as a JSON list of strings. Do not add quotes, explanations, or any extra text.
+            Generate 7–10 short, calming, and motivational quotes suitable for a user engaging in a wind-down ritual before bedtime. These quotes should help the user reflect, let go of stress, and foster a sense of peace and gratitude.
+
+            The quotes should be:
+            - 1–2 short sentences each
+            - Gentle, soothing, and emotionally supportive
+            - Written in a way that promotes mindfulness, gratitude, and deep relaxation
+            - Suitable for someone doing deep breathing (like 4-7-8), journaling, or peaceful visualization
+
+            Example tone:
+            - “Inhale peace, exhale stress.”
+            - “You did your best today. Let that be enough.”
+            - “The day is done. Be proud of yourself.”
+
+            Return the result as a JSON array:
+            [
+            "Quote 1...",
+            "Quote 2...",
+            ...
+            ]
+
+            """
+        response = OpenAIClient.generate_response_list(prompt)
+        if not response:
+            raise serializers.ValidationError(
+                {"message": "Failed to get a response from the AI service.", "status": "failed"},
+                code=500
+            )
+        
+
+        return response
