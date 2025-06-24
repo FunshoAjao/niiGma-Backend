@@ -20,7 +20,11 @@ app.conf.beat_schedule = {
     # },
     'daily-trivia-sync-task': {
         'task': 'trivia.services.tasks.run_daily_question_sync',
-        'schedule': crontab(minute='*')#'schedule': crontab(minute=0, hour='9,17'), #'schedule': crontab(minute='*') #timedelta(days=1), #crontab(hour=5, minute=0),  # 5:00 AM daily
+        'schedule': crontab(minute=0), #'schedule': crontab(minute='*') #'schedule': crontab(minute=0, hour='9,17'), #'schedule': crontab(minute='*') #timedelta(days=1), #crontab(hour=5, minute=0),  # 5:00 AM daily
+    },
+    'daily-wind-down-quote-task': {
+        'task': 'mindspace.services.tasks.generate_daily_wind_down_quotes',
+        'schedule': crontab(minute=0),  # Runs at minute 0 of every hour
     },
 }
 

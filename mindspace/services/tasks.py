@@ -5,6 +5,8 @@ from mindspace.services import soundscape_data
 from utils.helpers.ai_service import OpenAIClient
 from accounts.models import PromptHistory
 import requests
+
+from utils.models import DailyWindDownQuote
 from ..models import *
 from rest_framework import serializers
 from datetime import timedelta
@@ -12,6 +14,7 @@ from django.utils.timezone import now
 from datetime import date
 from django.db.models import Sum
 from core.celery import app as celery_app
+from celery import shared_task
 
 @celery_app.task(name="create_sound_space_playlist")
 def create_sound_space_playlist(mind_space_id):
@@ -30,10 +33,33 @@ def create_sound_space_playlist(mind_space_id):
         for s in soundscape_objects
     ])
     print(f"Created {len(soundscape_objects)} soundscapes for MindSpace ID {mind_space_id}")
+    
+@shared_task
+def generate_daily_wind_down_quotes():
+    from datetime import date
+
+    today = date.today()
+    moods = MoodChoices.choices
+
+    for mood in moods:
+        if DailyWindDownQuote.objects.filter(date=today, mood=mood[0]).exists():
+            print(f"Daily wind-down quotes for {today} with mood {mood[0]} already exist.")
+            continue
+
+        assistant = MindSpaceAIAssistant()
+        quotes = assistant.get_random_quotes_for_user(current_mood=mood)
+
+        try:
+            quotes = json.loads(quotes) if isinstance(quotes, str) else quotes
+        except Exception:
+            quotes = [quotes]
+
+        DailyWindDownQuote.objects.create(date=today, mood=mood[0], quotes=quotes)
+        print(f"Created daily wind-down quotes for {today} with mood {mood[0]}")
 
 
 class MindSpaceAIAssistant:
-    def __init__(self, user, mind_space_profile):
+    def __init__(self, user=None, mind_space_profile=None):
         self.user = user
         self.mind_space_profile = mind_space_profile
         

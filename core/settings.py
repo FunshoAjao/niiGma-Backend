@@ -42,6 +42,7 @@ SYSTEM_APP = [
     'mindspace',
     'reminders',
     'trivia',
+    'utils',
 ]
 
 THIRD_PARTY_APP = [

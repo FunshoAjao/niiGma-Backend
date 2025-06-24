@@ -1,3 +1,4 @@
+from datetime import date, timedelta
 import json
 from rest_framework import viewsets, permissions
 from rest_framework.response import Response
@@ -7,6 +8,7 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from accounts.choices import Gender
 from django_filters.rest_framework import DjangoFilterBackend
 from mindspace.permissions import IsSuperAdmin
+from utils.models import DailyWindDownQuote
 from .services.tasks import MindSpaceAIAssistant, create_sound_space_playlist
 from .models import *
 from common.responses import CustomErrorResponse, CustomSuccessResponse
@@ -667,24 +669,18 @@ class WindDownRitualLogViewSet(viewsets.ModelViewSet):
         mind_space_profile = getattr(user, 'mind_space_profile', None)
         if mind_space_profile is None:
             return CustomErrorResponse(message=f"{user} is yet to create a mind space.")
-        mood = MoodMirrorEntry.objects.filter(
+        mood_entry = MoodMirrorEntry.objects.filter(
             mind_space=mind_space_profile
         ).order_by('-created_at').first()
+        mood = mood_entry.mood if mood_entry else "calm"
+        today = date.today()
+        print(today, mood)
         try:
-            raw_quotes = MindSpaceAIAssistant(
-                user, mind_space_profile
-            ).get_random_quotes_for_user(mood.mood if mood else None)
-            
-            if isinstance(raw_quotes, str):
-                try:
-                    quotes = json.loads(raw_quotes)
-                except json.JSONDecodeError:
-                    quotes = [raw_quotes]  # fallback: wrap raw string in list
-            else:
-                quotes = raw_quotes
-            return CustomSuccessResponse(data=quotes, message="Random quotes generated successfully")
-        except Exception as e:
-            return CustomErrorResponse(message=str(e), status=500)
+            quote_record = DailyWindDownQuote.objects.get(date=today, mood=mood)
+            return CustomSuccessResponse(data=quote_record.quotes, message=f"{mood.capitalize()} quotes for today")
+        except DailyWindDownQuote.DoesNotExist:
+            return CustomErrorResponse(message="No quotes found for today's mood", status=404)
+        
     
 class SoulReflectionViewSet(viewsets.ModelViewSet):
     queryset = SoulReflection.objects.all().order_by('-created_at')

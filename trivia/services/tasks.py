@@ -73,12 +73,7 @@ class TriviaAIAssistant:
         
     def generate_questions_ai(self, num_questions=3):
         prompt = self.generate_feature_trivia_prompt(self.user.full_name if self.user is not None else '', num_questions)
-        # response = OpenAIClient.generate_response_list(prompt)
-        # try:
-        #     return json.loads(response)
-        # except Exception as error:
-        #     print(f"Error parsing AI response: {error}")
-        #     return []  # Fail-safe empty list if AI 
+        
         raw_response = OpenAIClient.generate_response_list(prompt)
 
         if not raw_response:
@@ -93,7 +88,7 @@ class TriviaAIAssistant:
             return parsed
         except json.JSONDecodeError as e:
             logger.warning(f"⚠️ Error parsing AI response: {e}")
-            logger.debug(f"Raw response: {raw_response}")
+            logger.warning(f"Raw response: {raw_response}")
             return []
         
     def generate_feature_trivia_prompt(self, user_first_name: str = "User", num_questions=3) -> str:
