@@ -10,12 +10,16 @@ from .models import  DailyTriviaSet, TriviaProfile, TriviaSession, TriviaQuestio
 from .serializers import SubmitAnswerSerializer, TriviaProfileSerializer, TriviaSessionSerializer
 from django.db import transaction
 from django.utils import timezone
+from rest_framework.exceptions import NotFound
 
 class TriviaSessionViewSet(viewsets.ModelViewSet):
     queryset = TriviaSession.objects.all()
     serializer_class = TriviaSessionSerializer
     permission_classes = [IsAuthenticated]
 
+    def create(self, request, *args, **kwargs):
+        raise NotFound()
+    
     def get_queryset(self):
         return self.queryset.filter(user=self.request.user)
     
