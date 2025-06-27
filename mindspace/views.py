@@ -8,7 +8,7 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from accounts.choices import Gender
 from django_filters.rest_framework import DjangoFilterBackend
 from mindspace.permissions import IsSuperAdmin
-from utils.models import DailyWindDownQuote
+from utils.models import DailyWindDownQuote, UserAIInsight
 from .services.tasks import MindSpaceAIAssistant, create_sound_space_playlist
 from .models import *
 from common.responses import CustomErrorResponse, CustomSuccessResponse
@@ -363,22 +363,12 @@ class MoodMirrorEntryViewSet(viewsets.ModelViewSet):
         user = request.user
         
         try:
-            logs = MoodMirrorEntry.objects.filter(
-                mind_space__user=user
-            ).order_by('-created_at')[:3]
-            if not logs:
-                return CustomSuccessResponse(
-                    data=[],
-                    message="No mood logs found for the user.",
-                    status=200
-                )
-            insights = MindSpaceAIAssistant(
-                user, user.mind_space_profile
-            ).generate_insights(
-                logs,
-                count=4
+            insights = (
+                UserAIInsight.objects.filter(user=user)
+                .order_by("-date")
+                .first()
             )
-            return CustomSuccessResponse(data=insights, message="Insights generated successfully")
+            return CustomSuccessResponse(data=insights.insights, message="Insights generated successfully")
         except Exception as e:
             return CustomErrorResponse(message=str(e), status=500)
         

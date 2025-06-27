@@ -2,11 +2,12 @@ import json
 from accounts.choices import Section
 from calories.serializers import MealSource
 from mindspace.services import soundscape_data
+from utils.choices import InsightType
 from utils.helpers.ai_service import OpenAIClient
 from accounts.models import PromptHistory
 import requests
-
-from utils.models import  DailyWindDownQuote
+from django.utils import timezone
+from utils.models import  DailyWindDownQuote, UserAIInsight
 from ..models import *
 from rest_framework import serializers
 from datetime import timedelta
@@ -58,28 +59,48 @@ def generate_daily_wind_down_quotes():
         print(f"Created daily wind-down quotes for {today} with mood {mood[0]}")
 
 
-# @shared_task
-# def generate_daily_insights():
-#     from datetime import date
+@shared_task
+def generate_weekly_user_insights():
+    today = date.today()
+    one_week_ago = today - timedelta(days=7)
 
-#     today = date.today()
-#     moods = MoodMirrorEntry.objects.values_list('mood', flat=True).distinct()
+    users = User.objects.filter(is_active=True, mind_space_profile__isnull=False)
+    insights_to_create = []
 
-#     for mood in moods:
-#         if DailyInsights.objects.filter(date=today, mood=mood[0]).exists():
-#             print(f"Daily insights for {today} with mood {mood[0]} already exist.")
-#             continue
+    for user in users:
+        logs = MoodMirrorEntry.objects.filter(
+            mind_space__user=user,
+            date__date__range=(one_week_ago, today)
+        ).order_by("-created_at")[:4]
 
-#         assistant = MindSpaceAIAssistant()
-#         insights = assistant.generate_insights(current_mood=mood)
+        if not logs.exists():
+            continue
+        mood = logs.first().mood or "Unknown"
+        
+        if user.mood_insights.filter(date=today, insight_type=InsightType.Insight, context_tag=mood).exists():
+            print(f"Insights for user {user.email}, mood -{mood} already exist for today.")
+            continue
+        
+        try:
+            insights = MindSpaceAIAssistant(user).generate_insights(logs, count=4)
+            print(f"Generated insights for user {user.email}")
+            
 
-#         try:
-#             insights = json.loads(insights) if isinstance(insights, str) else insights
-#         except Exception:
-#             insights = [insights]
+            insights_to_create.append(
+                UserAIInsight(
+                    user=user,
+                    context_tag=mood,
+                    date=today,
+                    insight_type=InsightType.Insight,
+                    insights=insights
+                )
+            )
+        except Exception as e:
+            print(f"Error generating insights for user {user.email}: {e}")
+            continue
 
-#         DailyInsights.objects.create(date=today, mood=mood[0], insights=insights)
-#         print(f"Created daily insights for {today} with mood {mood[0]}")
+    if insights_to_create:
+        UserAIInsight.objects.bulk_create(insights_to_create, ignore_conflicts=True)
 
 class MindSpaceAIAssistant:
     def __init__(self, user=None, mind_space_profile=None):
@@ -141,7 +162,7 @@ class MindSpaceAIAssistant:
 
         :param logs: [{"date": "...", "mood": "...", "reflection": "..."}]
         :param count: How many insights to generate (default: 3)
-        :return: A list of strings (insight statements)
+        :return: Respond ONLY with the quotes as a JSON list of strings. Do not add quotes, explanations, or any extra text.
         """
         mood_history = "\n".join(
             [f"{log.date}: Mood - {log.mood}. Reflection: {log.reflection}" for log in logs]
@@ -162,7 +183,7 @@ class MindSpaceAIAssistant:
             Keep each insight short (1-2 lines). Format them as a bullet list.
             Avoid repeating the same message.
             """
-        response = OpenAIClient.generate_response(prompt)
+        response = OpenAIClient.generate_response_list(prompt)
         if not response:
             raise serializers.ValidationError(
                 {"message": "Failed to get a response from the AI service.", "status": "failed"},

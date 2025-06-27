@@ -14,18 +14,19 @@ app.conf.broker_connection_retry_on_startup = True
 app.autodiscover_tasks()
 
 app.conf.beat_schedule = {
-    # 'send-reminders-every-minute': {
-    #     'task': 'reminders.services.tasks.send_due_reminders',
-    #     'schedule': crontab(minute='*'),  # every minute
-    # },
     'daily-trivia-sync-task': {
         'task': 'trivia.services.tasks.run_daily_question_sync',
-        'schedule': crontab(minute=0), #'schedule': crontab(minute='*') #'schedule': crontab(minute=0, hour='9,17'), #'schedule': crontab(minute='*') #timedelta(days=1), #crontab(hour=5, minute=0),  # 5:00 AM daily
+        'schedule': crontab(minute=0),  # 00:00 every hour
     },
     'daily-wind-down-quote-task': {
         'task': 'mindspace.services.tasks.generate_daily_wind_down_quotes',
-        'schedule': crontab(minute=0),  # Runs at minute 0 of every hour
+        'schedule': crontab(minute=5),  # 00:05 every hour
+    },
+    'weekly-mood-insight-task': {
+        'task': 'mindspace.services.tasks.generate_weekly_user_insights',
+        'schedule': crontab(minute='*/15'),  # Every 15 minutes
     },
 }
+
 
 print("✅ Celery configured")
