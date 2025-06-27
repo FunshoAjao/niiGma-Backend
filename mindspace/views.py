@@ -262,7 +262,7 @@ class MoodMirrorEntryViewSet(viewsets.ModelViewSet):
         try:
             logs = MoodMirrorEntry.objects.filter(
                 mind_space__user=user
-            ).order_by('-created_at')
+            ).order_by('-created_at')[:3]
             if not logs:
                 return CustomSuccessResponse(
                     data=[],
@@ -337,7 +337,7 @@ class MoodMirrorEntryViewSet(viewsets.ModelViewSet):
         try:
             logs = MoodMirrorEntry.objects.filter(
                 mind_space__user=user
-            ).order_by('-created_at')
+            ).order_by('-created_at')[:3]
             if not logs:
                 return CustomSuccessResponse(
                     data=[],

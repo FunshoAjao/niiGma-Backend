@@ -6,7 +6,7 @@ from utils.helpers.ai_service import OpenAIClient
 from accounts.models import PromptHistory
 import requests
 
-from utils.models import DailyWindDownQuote
+from utils.models import  DailyWindDownQuote
 from ..models import *
 from rest_framework import serializers
 from datetime import timedelta
@@ -57,6 +57,29 @@ def generate_daily_wind_down_quotes():
         DailyWindDownQuote.objects.create(date=today, mood=mood[0], quotes=quotes)
         print(f"Created daily wind-down quotes for {today} with mood {mood[0]}")
 
+
+# @shared_task
+# def generate_daily_insights():
+#     from datetime import date
+
+#     today = date.today()
+#     moods = MoodMirrorEntry.objects.values_list('mood', flat=True).distinct()
+
+#     for mood in moods:
+#         if DailyInsights.objects.filter(date=today, mood=mood[0]).exists():
+#             print(f"Daily insights for {today} with mood {mood[0]} already exist.")
+#             continue
+
+#         assistant = MindSpaceAIAssistant()
+#         insights = assistant.generate_insights(current_mood=mood)
+
+#         try:
+#             insights = json.loads(insights) if isinstance(insights, str) else insights
+#         except Exception:
+#             insights = [insights]
+
+#         DailyInsights.objects.create(date=today, mood=mood[0], insights=insights)
+#         print(f"Created daily insights for {today} with mood {mood[0]}")
 
 class MindSpaceAIAssistant:
     def __init__(self, user=None, mind_space_profile=None):

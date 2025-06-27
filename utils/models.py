@@ -11,3 +11,11 @@ class DailyWindDownQuote(BaseModel):
 
     def __str__(self):
         return f"Quotes for {self.date}"
+    
+# class DailyInsights(BaseModel):
+#     date = models.DateField()
+#     mood = models.CharField(max_length=50)
+#     insights = models.JSONField(default=list, help_text="List of daily insights")
+
+#     def __str__(self):
+#         return f"Insights for {self.date}"
