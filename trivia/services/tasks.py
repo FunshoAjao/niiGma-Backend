@@ -1,13 +1,9 @@
 import json
 import logging
+import re
 logger = logging.getLogger(__name__)
-from accounts.choices import Section
 from utils.helpers.ai_service import OpenAIClient
-from accounts.models import PromptHistory
-import requests
 from ..models import *
-from rest_framework import serializers
-from datetime import timedelta
 from django.utils.timezone import now
 from datetime import date
 from django.db.models import Sum
@@ -75,20 +71,20 @@ class TriviaAIAssistant:
         prompt = self.generate_feature_trivia_prompt(self.user.full_name if self.user is not None else '', num_questions)
         
         raw_response = OpenAIClient.generate_response_list(prompt)
-
         if not raw_response:
             logger.warning("🟡 AI returned an empty response.")
             return []
+        raw_response_cleaned = re.sub(r"(^```(?:\w+)?\n)|(\n```$)", "", raw_response.strip())
 
         try:
-            parsed = json.loads(raw_response)
+            parsed = json.loads(raw_response_cleaned)
             if not isinstance(parsed, list):
                 logger.warning("🟡 AI returned non-list JSON.")
                 return []
             return parsed
         except json.JSONDecodeError as e:
             logger.warning(f"⚠️ Error parsing AI response: {e}")
-            logger.warning(f"Raw response: {raw_response}")
+            logger.warning(f"Raw response: {raw_response_cleaned}")
             return []
         
     def generate_feature_trivia_prompt(self, user_first_name: str = "User", num_questions=3) -> str:

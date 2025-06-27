@@ -368,6 +368,12 @@ class MoodMirrorEntryViewSet(viewsets.ModelViewSet):
                 .order_by("-date")
                 .first()
             )
+            if not insights:
+                return CustomSuccessResponse(
+                    data=[],
+                    message="Loading insights.... Please wait. (Ensure you log mood for at least 3 days)",
+                    status=200
+                )
             return CustomSuccessResponse(data=insights.insights, message="Insights generated successfully")
         except Exception as e:
             return CustomErrorResponse(message=str(e), status=500)
