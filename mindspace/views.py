@@ -202,6 +202,34 @@ class MoodMirrorEntryViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         serializer = self.get_serializer(instance)
         return CustomSuccessResponse(data=serializer.data)
+    
+    @action(
+        methods=["get"],
+        detail=False,
+        url_path="get_mood_logs_by_date/(?P<date>[^/.]+)",
+        permission_classes=[IsAuthenticated],
+        serializer_class=MoodMirrorEntrySerializer,
+    )
+    def get_mood_logs_by_date(self, request, date, *args, **kwargs):
+        """
+        Get mood logs for a specific date.
+        """
+        user = request.user
+        try:
+            date_obj = timezone.datetime.strptime(date, '%Y-%m-%d').date()
+            logs = MoodMirrorEntry.objects.filter(
+                mind_space__user=user, date__date=date_obj
+            ).order_by('-created_at')
+            if not logs.exists():
+                return CustomSuccessResponse(
+                    data=[],
+                    message="No mood logs found for the specified date.",
+                    status=200
+                )
+            serializer = self.get_serializer(logs, many=True)
+            return CustomSuccessResponse(data=serializer.data, message="Mood logs retrieved successfully")
+        except ValueError:
+            return CustomErrorResponse(message="Invalid date format. Use YYYY-MM-DD.", status=400)
 
     @action(
         methods=["post"],
