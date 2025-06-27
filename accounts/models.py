@@ -128,6 +128,7 @@ class PromptHistory(BaseModel):
     section = models.CharField(choices=Section, max_length=50)
     prompt = models.TextField()
     response = models.TextField()
+    conversation_id = models.UUIDField(default=uuid.uuid4, db_index=True)
 
     class Meta:
         ordering = ['-created_at']

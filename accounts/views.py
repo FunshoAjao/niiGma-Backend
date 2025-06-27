@@ -4,6 +4,7 @@ from rest_framework.generics import ListAPIView
 from django.middleware.csrf import get_token
 from django.utils import timezone
 from rest_framework import serializers
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework.permissions import AllowAny
 from rest_framework import viewsets
 from rest_framework.exceptions import NotFound
@@ -507,18 +508,22 @@ class UserViewSet(viewsets.ModelViewSet):
         validated_data = serializer.validated_data
         response = CalorieAIAssistant(user).chat_with_ai(
             validated_data.get("user_prompt"),
+            validated_data.get("conversation_id", None),
             validated_data.get("base_64_image"),
-            validated_data.get("text"),
+            validated_data.get("text")
         )
         return CustomSuccessResponse(data=response, message="Chat with AI initiated successfully")
+    
+    
             
-class PromptHistoryView(ListAPIView):
+class PromptHistoryView(viewsets.ModelViewSet):
     queryset = PromptHistory.objects.all()
     serializer_class = PromptHistorySerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         section = self.request.query_params.get("section")
+        print(f"Section filter: {section}")
         if section is None:
             section = Section.NONE
         queryset = PromptHistory.objects.filter(user=self.request.user)
@@ -528,21 +533,66 @@ class PromptHistoryView(ListAPIView):
     
     def get_paginated_response(self, data):
         return Response({
-            'count': self.paginator.page.paginator.count,
-            'next': self.paginator.get_next_link(),
-            'previous': self.paginator.get_previous_link(),
             'status': 'success',
-            'data': data,
-            'message': ''
+            'message': '',
+            'data': {
+                'count': self.paginator.page.paginator.count,
+                'next': self.paginator.get_next_link(),
+                'previous': self.paginator.get_previous_link(),
+                'results': data
+            }
         })
 
     def get_paginated_response_for_none_records(self, data):
         return Response({
-            'count': 0,
-            'next': None,
-            'previous': None,
             'status': 'success',
-            'data': data,
-            'message': 'No staff records found.'
+            'message': 'No record found.',
+            'data': {
+                'count': 0,
+                'next': None,
+                'previous': None,
+                'results': data
+            }
         })
-    
+        
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="section",
+                description="Filter by section",
+                required=False,
+                type=str,
+                enum=[section.value for section in Section]
+            ),
+            OpenApiParameter(
+                name="page_size",
+                description="Page number for pagination",   
+                required=False,
+                type=int,
+            ),
+            OpenApiParameter(
+                name="page",
+                description="Page size for pagination",
+                required=False,
+                type=int,
+            )
+        ]
+    )
+    @action(
+        detail=False, methods=["get"],
+        url_path="conversation/(?P<conversation_id>[^/.]+)",
+        serializer_class=PromptHistorySerializer,
+        permission_classes=[IsAuthenticated]
+        )
+    def get_conversation(self, request, conversation_id):
+        queryset = PromptHistory.objects.filter(user=request.user, conversation_id=conversation_id)
+        section = request.query_params.get("section")
+        if section:
+            queryset = queryset.filter(section=section)
+        queryset = self.filter_queryset(queryset)
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(page, many=True)
+        return self.get_paginated_response_for_none_records(data=serializer.data)

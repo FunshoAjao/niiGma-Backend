@@ -1,4 +1,5 @@
 import json
+from uuid import uuid4
 from accounts.choices import Section
 from calories.serializers import MealSource
 from utils.helpers.ai_service import OpenAIClient
@@ -163,7 +164,7 @@ class CalorieAIAssistant:
         return prompt
 
             
-    def chat_with_ai(self, user_context, base_64_image=None, text=""):
+    def chat_with_ai(self, user_context, conversation_id: uuid4, base_64_image=None, text=""):
         if base_64_image:
             return self.chat_with_ai_with_base64(user_context, base_64_image, text)
         prompt = self.get_user_prompt(user_context)
@@ -174,11 +175,14 @@ class CalorieAIAssistant:
                 {"message": "Failed to get a response from the AI service.", "status": "failed"},
                 code=500
             )
+        if conversation_id is None:
+            conversation_id = uuid4()
         PromptHistory.objects.create(
                     user=self.user,
                     section=Section.NONE,
                     prompt=user_context,
-                    response=response
+                    response=response,
+                    conversation_id=conversation_id
                 )
         return response
 
