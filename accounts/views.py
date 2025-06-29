@@ -16,6 +16,7 @@ from accounts.choices import Section
 from accounts.services.tasks import send_otp
 from calories.models import CalorieQA
 from calories.services.tasks import CalorieAIAssistant
+from ovulations.services.tasks import calculate_cycle_state
 from reminders.services.tasks import send_push_notification
 from utils.helpers.services import generate_otp
 from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -218,6 +219,10 @@ class UserViewSet(viewsets.ModelViewSet):
             "customer": UserSerializer(user).data
         }
         logger.info("Login completed successfully")
+        setup = getattr(user, "cycle_setup_records", None)
+        if setup and getattr(setup, "setup_complete", False):
+            calculate_cycle_state.delay(user.id, timezone.now().date())
+            logger.info(f"Cycle state updated for user: {user.email}")
         return CustomSuccessResponse(data=data, message='Logged in successfully')
 
     @action(

@@ -182,6 +182,12 @@ class MindSpaceAIAssistant:
 
             Keep each insight short (1-2 lines). Format them as a bullet list.
             Avoid repeating the same message.
+            Return the result as a JSON array:
+            [
+            "Insight 1...",
+            "Insight 2...",
+            ...
+            ]
             """
         response = OpenAIClient.generate_response_list(prompt)
         if not response:

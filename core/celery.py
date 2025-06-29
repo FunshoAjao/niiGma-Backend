@@ -26,6 +26,10 @@ app.conf.beat_schedule = {
         'task': 'mindspace.services.tasks.generate_weekly_user_insights',
         'schedule': crontab(minute='*/15'),  # Every 15 minutes
     },
+    "daily-cycle-state-update": {
+        "task": "ovulations.services.tasks.update_all_cycle_states",
+        "schedule": crontab(minute='*/40'),  # Runs every 20 minutes
+    },
 }
 
 

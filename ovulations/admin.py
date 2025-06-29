@@ -1,3 +1,8 @@
 from django.contrib import admin
+from .models import CycleSetup, OvulationCycle, OvulationLog, CycleState, CycleInsight
 
-# Register your models here.
+admin.site.register(CycleSetup)
+admin.site.register(OvulationCycle)
+admin.site.register(OvulationLog)
+admin.site.register(CycleState)
+admin.site.register(CycleInsight)

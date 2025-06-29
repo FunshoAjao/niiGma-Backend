@@ -470,8 +470,7 @@ class SoundscapePlayViewSet(viewsets.ModelViewSet):
         methods=["put"],
         detail=False,
         url_path="like_sound/(?P<id>[^/.]+)",
-        permission_classes=[IsAuthenticated],
-        serializer_class=None
+        permission_classes=[IsAuthenticated]
     )
     def like_sound(self, request, *args, **kwargs):
         sound_id = kwargs['id']
