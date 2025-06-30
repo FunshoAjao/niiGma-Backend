@@ -184,7 +184,7 @@ class CalorieAIAssistant:
                     response=response,
                     conversation_id=conversation_id
                 )
-        return response
+        return response, conversation_id
 
     def chat_with_ai_with_base64(self, user_context, base64_image,  text=""):
         prompt = self.get_user_prompt( user_context)
