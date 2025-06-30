@@ -16,6 +16,42 @@ class TriviaSessionViewSet(viewsets.ModelViewSet):
     queryset = TriviaSession.objects.all()
     serializer_class = TriviaSessionSerializer
     permission_classes = [IsAuthenticated]
+    
+    def get_paginated_response(self, data):
+        return Response({
+            'status': 'success',
+            'message': '',
+            'data': {
+                'count': self.paginator.page.paginator.count,
+                'next': self.paginator.get_next_link(),
+                'previous': self.paginator.get_previous_link(),
+                'results': data
+            }
+        })
+
+    def get_paginated_response_for_none_records(self, data):
+        return Response({
+            'status': 'success',
+            'message': 'No user records found.',
+            'data': {
+                'count': 0,
+                'next': None,
+                'previous': None,
+                'results': data
+            }
+        })
+    
+    def get(self, request, *args, **kwargs):
+        """
+        Override the default GET method to return only sessions for the authenticated user.
+        """
+        queryset = self.get_queryset()
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return CustomSuccessResponse(data=serializer.data)
 
     def create(self, request, *args, **kwargs):
         raise NotFound()
