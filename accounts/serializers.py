@@ -117,7 +117,7 @@ class ChatWithAiSerializer(serializers.Serializer):
     user_prompt = serializers.CharField(required=True)
     base_64_image = serializers.CharField(required=False, allow_blank=True)
     text = serializers.CharField(required=False, allow_blank=True)
-    conversation_id = serializers.CharField(required=False, allow_blank=True)
+    conversation_id = serializers.UUIDField(required=False, allow_null=True)
     
 class PushNotificationSerializer(serializers.Serializer):
     title = serializers.CharField(required=True)

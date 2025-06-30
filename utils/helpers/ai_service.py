@@ -2,6 +2,12 @@ from openai import OpenAI
 from rest_framework import serializers
 from django.conf import settings
 import json
+from rest_framework.exceptions import APIException
+
+class VerificationFailed(APIException):
+    status_code = 400
+    default_detail = "Invalid or expired verification code"
+    default_code = "verification_failed"
 
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
@@ -63,29 +69,32 @@ class OpenAIClient:
     
     @staticmethod
     def chat_with_base64_image(base64_image: str, text: str = "", context: str = ""):
-        messages = [
-            {"role": "system", "content": f"You are a helpful fitness assistant. {context}"},
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": base64_image  # Must start with data:image/jpeg;base64,...
+        try:
+            messages = [
+                {"role": "system", "content": f"You are a helpful fitness assistant. {context}"},
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": base64_image  # Must start with data:image/jpeg;base64,...
+                            }
+                        },
+                        {
+                            "type": "text",
+                            "text": text or "Please describe this meal or item."
                         }
-                    },
-                    {
-                        "type": "text",
-                        "text": text or "Please describe this meal or item."
-                    }
-                ]
-            }
-        ]
+                    ]
+                }
+            ]
 
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=messages,
-            max_tokens=800
-        )
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=messages,
+                max_tokens=800
+            )
 
-        return response.choices[0].message.content
+            return response.choices[0].message.content
+        except Exception as e:
+            raise VerificationFailed(f"{str(e)}")
