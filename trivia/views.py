@@ -77,13 +77,14 @@ class TriviaSessionViewSet(viewsets.ModelViewSet):
 
 
     def _handle_free_trivia(self, user, today):
+        from rest_framework import serializers
         if TriviaSession.objects.filter(user=user, source="free", started_at__date=today).exists():
-            raise CustomErrorResponse(message="Daily trivia already taken.", status=400)
+            raise serializers.ValidationError({'message':"Daily trivia already taken.", "status":"failed"}, code=400)
 
         try:
             daily = DailyTriviaSet.objects.get(date=today)
         except DailyTriviaSet.DoesNotExist:
-            raise CustomErrorResponse(message="Today's trivia is not available.", status=400)
+            raise serializers.ValidationError({'message':"Today's trivia is not available.", "status":"failed"}, code=400)
 
         with transaction.atomic():
             session = TriviaSession.objects.create(user=user, source=TriviaSessionTypeChoices.Free)
