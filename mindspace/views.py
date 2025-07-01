@@ -3,7 +3,6 @@ import json
 from rest_framework import viewsets, permissions
 from rest_framework.response import Response
 from rest_framework.decorators import action
-
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from accounts.choices import Gender
 from django_filters.rest_framework import DjangoFilterBackend
