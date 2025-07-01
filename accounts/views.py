@@ -15,6 +15,7 @@ from django.core.cache import cache
 from accounts.choices import Section
 from accounts.services.tasks import send_otp
 from calories.models import CalorieQA
+from calories.serializers import CalorieSerializer
 from calories.services.tasks import CalorieAIAssistant
 from ovulations.services.tasks import calculate_cycle_state
 from reminders.services.tasks import send_push_notification
@@ -332,6 +333,7 @@ class UserViewSet(viewsets.ModelViewSet):
                     "is_ovulation_tracker_setup":user.is_ovulation_tracker_setup,
                     "is_trivia_setup":user.is_trivia_setup,
                     "onboarding_completed_at": user.onboarding_completed_at.isoformat() if user.onboarding_completed_at else None,
+                    "calories_profile": CalorieSerializer(user.calorie_qa).data if hasattr(user, 'calorie_qa') else None
                 })
         except Exception as e:
             return CustomErrorResponse(message="Failed to retrieve user information", status=500)
