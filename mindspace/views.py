@@ -327,7 +327,7 @@ class MoodMirrorEntryViewSet(viewsets.ModelViewSet):
             
             if not logs.exists():
                 return CustomSuccessResponse(
-                    data=[],
+                    data="",
                     message="No mood logs found for the user.",
                     status=200
                 )
