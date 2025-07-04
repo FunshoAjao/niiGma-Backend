@@ -20,6 +20,7 @@ class MoodChoices(models.TextChoices):
     Teary = "teary", "Teary"
     Hopeful = "hopeful", "Hopeful"
     Tired = "tired", "Tired"
+    Upset = "upset", "Upset"
     
 class RitualTypeChoices(models.TextChoices):
     Gratitude = "gratitude journaling", "Gratitude Journaling"

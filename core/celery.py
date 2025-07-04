@@ -28,7 +28,7 @@ app.conf.beat_schedule = {
     },
     "daily-cycle-state-update": {
         "task": "ovulations.services.tasks.update_all_cycle_states",
-        "schedule": crontab(minute='*/40'),  # Runs every 20 minutes
+        "schedule": crontab(minute='*/50'),  # Runs every 50 minutes
     },
 }
 
