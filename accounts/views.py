@@ -92,24 +92,27 @@ class UserViewSet(viewsets.ModelViewSet):
         if not serializer.is_valid():
             return CustomErrorResponse(message=serializer.errors, status=400)
         
-        self.perform_update(serializer)
-        instance.refresh_from_db()
-        required_fields = [
-            instance.date_of_birth,
-            instance.height,
-            instance.wellness_status,
-            instance.referral_source,
-            instance.goals
-        ]
+        try:
+            self.perform_update(serializer)
+            instance.refresh_from_db()
+            required_fields = [
+                instance.date_of_birth,
+                instance.height,
+                instance.wellness_status,
+                instance.referral_source,
+                instance.goals
+            ]
 
-        # Check if all required fields are filled
-        if all(required_fields) and not instance.has_completed_onboarding:
-            instance.has_completed_onboarding = True
-            instance.onboarding_completed_at = timezone.now()
-            instance.save(update_fields=['has_completed_onboarding', 'onboarding_completed_at'])
+            # Check if all required fields are filled
+            if all(required_fields) and not instance.has_completed_onboarding:
+                instance.has_completed_onboarding = True
+                instance.onboarding_completed_at = timezone.now()
+                instance.save(update_fields=['has_completed_onboarding', 'onboarding_completed_at'])
+                return CustomSuccessResponse(data=serializer.data, message="User updated successfully")
+            
             return CustomSuccessResponse(data=serializer.data, message="User updated successfully")
-        
-        return CustomSuccessResponse(data=serializer.data, message="User updated successfully")
+        except Exception as e:
+            return CustomErrorResponse(message=str(e))
 
     def destroy(self, request, *args, **kwargs):
         """Delete user"""
@@ -322,6 +325,7 @@ class UserViewSet(viewsets.ModelViewSet):
                     "is_staff": user.is_staff,
                     "age": user.age,
                     "gender":user.gender,
+                    "profile_picture": user.profile_picture,
                     "account_verified": user.account_verified,
                     "account_verified_at": user.account_verified_at.isoformat() if user.account_verified_at else None,
                     "created_at": user.created_at.isoformat() if user.created_at else None,

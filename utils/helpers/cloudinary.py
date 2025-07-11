@@ -1,9 +1,11 @@
+import base64
+import uuid
 import cloudinary
 import cloudinary.uploader
 import cloudinary.api
 from cloudinary.uploader import upload
 from django.conf import settings
-
+from django.core.files.base import ContentFile
 
 
 class CloudinaryFileUpload:
@@ -20,9 +22,14 @@ class CloudinaryFileUpload:
             secure=True
         )
         
-    def upload_file_to_cloudinary_v1(self, file)->str:
+    def upload_file_to_cloudinary_v1(self, file, file_name)->str:
         self.__set_up()
-        result = upload(file, resource_type="auto", type="upload")
+        result = upload(file, resource_type="auto", 
+                        type="upload", public_id=file_name, 
+                        overwrite=True,
+                        use_filename=True,
+                        folder="profile_pictures",
+                        unique_filename=False)
         return result["secure_url"]
     
     def upload_file_to_cloudinary(self, file, filename="upload.zip"):

@@ -1,8 +1,48 @@
+import base64
+import uuid
+import requests
 from rest_framework import serializers
 
+from django.core.files.base import ContentFile
 from accounts.choices import DeviceType, Gender
+from utils.helpers.cloudinary import CloudinaryFileUpload
 from .models import PromptHistory, User
 
+class Base64ImageField(serializers.ImageField):
+    def to_internal_value(self, data):
+        user_id = self.context['request'].user.id
+        data = self.sanitize_base64_image(data)
+
+        if isinstance(data, str) and data.startswith('data:image'):
+            mime_type, imgstr = data.split(';base64,')
+            ext = mime_type.split('/')[-1]
+            img_data = ContentFile(base64.b64decode(imgstr), name=f"{uuid.uuid4()}.{ext}")
+            file_name = f"{user_id}"
+            
+            # ✅ Upload to Cloudinary
+            uploaded_file = CloudinaryFileUpload().upload_file_to_cloudinary_v1(img_data, file_name)
+            
+            return uploaded_file
+        
+        # 🟢 If it's a remote URL
+        elif isinstance(data, str) and data.startswith("http"):
+            response = requests.get(data)
+            if response.status_code != 200:
+                raise serializers.ValidationError("Failed to download image from URL")
+            ext = data.split(".")[-1].split("?")[0]
+            file_name = f"{user_id}.{ext}"
+            img_data = ContentFile(response.content, name=file_name)
+            return CloudinaryFileUpload().upload_file_to_cloudinary_v1(img_data, file_name)
+
+        return super().to_internal_value(data)
+
+    def sanitize_base64_image(self, data):
+        if data.startswith("data:@file/jpeg;base64"):
+            return data.replace("data:@file/jpeg;base64", "data:image/jpeg;base64")
+        return data
+    
+    def to_representation(self, value):
+        return str(value) if value else None
 
 class UserSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(required=False, allow_blank=True)
@@ -15,6 +55,7 @@ class UserSerializer(serializers.ModelSerializer):
     referral_source = serializers.CharField(required=False, allow_blank=True)
     password = serializers.CharField(write_only=True, required=True)
     email = serializers.EmailField(required=True, validators=[])
+    profile_picture = Base64ImageField(required=False)
 
     class Meta:
         model = User
@@ -36,6 +77,14 @@ class UserSerializer(serializers.ModelSerializer):
         if not self.instance and User.objects.filter(email=value).exists():
             raise serializers.ValidationError("A user with this email already exists.")
         return value
+    
+    def update(self, instance, validated_data):
+        # profile_picture is already handled by Base64ImageField
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        instance.save()
+        return instance
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

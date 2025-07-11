@@ -55,6 +55,8 @@ THIRD_PARTY_APP = [
     'rest_framework_simplejwt.token_blacklist',
     'django_redis',
     'django_filters',
+    'cloudinary',
+    'cloudinary_storage'
 ]
 
 INSTALLED_APPS += SYSTEM_APP + THIRD_PARTY_APP
@@ -269,3 +271,11 @@ FCM_DJANGO_SETTINGS = {
 API_KEY = config('API_KEY')
 API_SECRET = config('API_SECRET')
 CLOUD_NAME = config('CLOUD_NAME')
+
+CLOUDINARY_STORAGE = {
+    "CLOUD_NAME": CLOUD_NAME,
+    "API_KEY": API_KEY,
+    "API_SECRET": API_SECRET,
+}
+
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
