@@ -35,7 +35,7 @@ class CalorieAIAssistant:
             # Get logged meal
             logged = LoggedMeal.objects.filter(
                 user=user,
-                date=target_date,
+                date__date=target_date,
                 meal_type=meal_type
             ).aggregate(
                 total_calories=Sum('calories'),

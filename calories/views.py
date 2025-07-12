@@ -607,10 +607,10 @@ class CalorieViewSet(viewsets.ModelViewSet):
         user = request.user
         target_date = date.fromisoformat(day) if day else timezone.now().date()
 
-        suggested_meals = SuggestedMeal.objects.filter(calorie_goal__user=user, date=target_date)
-        logged_meals = LoggedMeal.objects.filter(user=user, date=target_date)
+        suggested_meals = SuggestedMeal.objects.filter(calorie_goal__user=user, date__date=target_date)
+        logged_meals = LoggedMeal.objects.filter(user=user, date__date=target_date)
 
-        suggested_workout = SuggestedWorkout.objects.filter(calorie_goal__user=user, date=target_date).first()
+        suggested_workout = SuggestedWorkout.objects.filter(calorie_goal__user=user, date__date=target_date).first()
         logged_workouts = LoggedWorkout.objects.filter(user=user, date=target_date)
 
         total_logged_meal_calories = logged_meals.aggregate(total=Sum('calories'))['total'] or 0
