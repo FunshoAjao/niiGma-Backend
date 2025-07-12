@@ -47,5 +47,4 @@ app.conf.beat_schedule = {
     },
 }
 
-
 print("✅ Celery configured")
