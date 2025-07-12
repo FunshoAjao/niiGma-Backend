@@ -1,4 +1,7 @@
 import json
+import logging
+logger = logging.getLogger(__name__)
+import requests
 from uuid import uuid4
 from accounts.choices import Section
 from calories.serializers import MealSource
@@ -426,17 +429,59 @@ class CalorieAIAssistant:
         SuggestedMeal.objects.bulk_create(meal_entries)
         
         
-    def extract_food_items_from_meal_source(self, meal_source, serving_count=1, measurement_unit="serving", food_description=None) -> dict:
+    def get_food_by_barcode(self, barcode: str) -> dict:
+        try:
+            response = requests.get(f"https://world.openfoodfacts.org/api/v0/product/{barcode}.json")
+            if response.status_code == 200:
+                data = response.json()
+                
+                # Barcode not recognized in Open Food Facts
+                if data.get("status") != 1:
+                    raise serializers.ValidationError(
+                        {"message": "No product found for the given barcode.", "status": "failed"},
+                        code=400
+                    )
+                product = data.get("product", {})
+                
+                # Product exists but no useful data
+                if not product or not product.get("nutriments"):
+                    raise serializers.ValidationError(
+                        {"message": "Product information is incomplete or missing for this barcode.", "status": "failed"},
+                        code=400
+                    )
+                
+                logger.info(f"name: {product.get('product_name', 'Unknown')}")
+                print(f"name of the product logged by barcode: {product.get('product_name', 'Unknown')}")
+                
+                return {
+                    "name": product.get("product_name", "Unknown"),
+                    "calories": float(product.get("nutriments", {}).get("energy-kcal_100g", 0)),
+                    "protein": float(product.get("nutriments", {}).get("proteins_100g", 0)),
+                    "carbs": float(product.get("nutriments", {}).get("carbohydrates_100g", 0)),
+                    "fats": float(product.get("nutriments", {}).get("fat_100g", 0)),
+                }
+            else:
+                logger.error(f"Barcode lookup failed with status {response.status_code}")
+                raise ConnectionError("Unable to fetch data from food database.")
+            
+        except (requests.exceptions.RequestException, ConnectionError, Exception) as e:
+            logger.error(f"Barcode API request failed: {e}")
+            raise serializers.ValidationError(
+                        {"message": f"Could not connect to barcode nutrition API. Please try again later. {e}", "status": "failed"},
+                        code=400
+                    )
+    
+    def extract_food_items_from_meal_source(self, meal_source, serving_count=1,
+                                            measurement_unit="serving", food_description=None, barcode=None) -> dict:
         if meal_source == MealSource.Barcode:
-            barcode = meal_source.get("barcode")
             food_item = self.get_food_by_barcode(barcode)
             if food_item:
                 return {
-                    "name": food_item["name"],
+                    "food_name": food_item["name"],
                     "calories": food_item["calories"],
                     "protein": food_item["protein"],
                     "carbs": food_item["carbs"],
-                    "fat": food_item["fat"]
+                    "fats": food_item["fats"]
                 }
                 
         elif meal_source == MealSource.Manual:
@@ -572,21 +617,6 @@ class CalorieAIAssistant:
             )
         return calories
 
-
-        
-    def get_food_by_barcode(self, barcode)-> dict:
-        url = f"https://world.openfoodfacts.org/api/v0/product/{barcode}.json"
-        response = requests.get(url)
-        if response.status_code == 200:
-            product = response.json().get("product", {})
-            return {
-                "name": product.get("product_name", "Unknown Product"),
-                "calories": product.get("nutriments", {}).get("energy-kcal_100g", 0),
-                "protein": product.get("nutriments", {}).get("proteins_100g", 0),
-                "carbs": product.get("nutriments", {}).get("carbohydrates_100g", 0),
-                "fat": product.get("nutriments", {}).get("fat_100g", 0),
-            }
-        return {}
 
     def analyze_food_image(self, image_base64=None):
         # 1. Send to Google Cloud Vision -> get labels

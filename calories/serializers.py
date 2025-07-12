@@ -48,10 +48,24 @@ class SuggestedWorkoutSerializer(serializers.ModelSerializer):
     
 class LoggedMealSerializer(serializers.ModelSerializer):
     meal_source = serializers.ChoiceField(choices=MealSource.choices, default=MealSource.Manual)
+    barcode = serializers.CharField(required=False)
     class Meta:
         model = LoggedMeal
-        fields = ['meal_type', 'food_item', 'date', 'calories', 'protein', 'carbs', 'fats', 'meal_source', 'image_url', 'number_of_servings', 'measurement_unit']
+        fields = ['meal_type', 'food_item', 'date', 'calories', 'protein', 'carbs', 'fats',
+                  'meal_source', 'image_url', 'number_of_servings', 'measurement_unit', 'barcode']
         read_only_fields = ['calories', 'protein', 'carbs', 'fats', 'id', 'user', 'created_at', 'updated_at']  
+        
+    def validate(self, data):
+        meal_source = data.get('meal_source')
+        barcode = data.get('barcode')
+
+        if meal_source == MealSource.Barcode and not barcode:
+            raise serializers.ValidationError(
+                {"message": "Barcode is required!", "status": "failed"},
+                code=400
+            )
+
+        return data
         
 class LoggedWorkoutSerializer(serializers.ModelSerializer):
     steps = serializers.IntegerField(required=False)

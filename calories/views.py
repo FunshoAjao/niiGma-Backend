@@ -8,7 +8,7 @@ from rest_framework import viewsets
 
 from utils.helpers.services import clean_insight
 from .models import *
-from .serializers import CalorieAISerializer, CalorieSerializer, LoggedMealSerializer, LoggedWorkoutSerializer, SuggestedMealSerializer, SuggestedWorkoutSerializer
+from .serializers import CalorieAISerializer, CalorieSerializer, LoggedMealSerializer, LoggedWorkoutSerializer, MealSource, SuggestedMealSerializer, SuggestedWorkoutSerializer
 from rest_framework.response import Response
 from rest_framework.exceptions import NotFound
 from rest_framework.decorators import action
@@ -267,13 +267,20 @@ class CalorieViewSet(viewsets.ModelViewSet):
             
             validated_data = serializer.validated_data
             food_item = validated_data.get("food_item")
+            barcode = validated_data.get("barcode")
+            
             nutrition = CalorieAIAssistant(user).extract_food_items_from_meal_source(
                 validated_data.get("meal_source"), validated_data['number_of_servings'], 
-                validated_data['measurement_unit'], food_item)
+                validated_data['measurement_unit'], food_item, barcode)
             
             if not nutrition:
                 return CustomErrorResponse(message="Nutrition estimation failed", status=400)
             
+            if validated_data['meal_source'] == MealSource.Barcode:
+                validated_data['food_item'] = nutrition['food_name']
+            else:
+                nutrition.pop("food_item", None)
+                
             LoggedMeal.objects.update_or_create(
                 user=user,
                 meal_type=validated_data['meal_type'],
