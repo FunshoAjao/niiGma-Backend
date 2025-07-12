@@ -205,7 +205,7 @@ class CalorieViewSet(viewsets.ModelViewSet):
         if not calorie:
             return CustomErrorResponse(message="Calorie onboarding not done yet!", status=404)
 
-        suggested_meals = SuggestedMeal.objects.filter(calorie_goal=calorie, date=day)
+        suggested_meals = SuggestedMeal.objects.filter(calorie_goal=calorie, date__date=day)
 
         if not suggested_meals.exists():
             CalorieAIAssistant(user).generate_suggested_meals_for_the_day(calorie.id, day)
@@ -239,7 +239,7 @@ class CalorieViewSet(viewsets.ModelViewSet):
         if not calorie:
             return CustomErrorResponse(message="Calorie onboarding not done yet!", status=404)
 
-        suggested_work_out = SuggestedWorkout.objects.filter(calorie_goal=calorie, date=day)
+        suggested_work_out = SuggestedWorkout.objects.filter(calorie_goal=calorie, date__date=day)
 
         if not suggested_work_out.exists():
             CalorieAIAssistant(user).generate_suggested_workout_with_ai(calorie.daily_calorie_target, day)
@@ -261,6 +261,9 @@ class CalorieViewSet(viewsets.ModelViewSet):
             serializer = LoggedMealSerializer(data=request.data)
             if not serializer.is_valid():
                 return CustomErrorResponse(message=serializer.errors, status=400)
+            
+            if not hasattr(self.request.user, "calorie_qa"):
+                return CustomErrorResponse(message="You are yet to set up your calories profile!", status=400)
             
             validated_data = serializer.validated_data
             food_item = validated_data.get("food_item")
@@ -299,6 +302,9 @@ class CalorieViewSet(viewsets.ModelViewSet):
             if not serializer.is_valid():
                 return CustomErrorResponse(message=serializer.errors, status=400)
             
+            if not hasattr(self.request.user, "calorie_qa"):
+                return CustomErrorResponse(message="You are yet to set up your calories profile!", status=400)
+            
             validated_data = serializer.validated_data
             food_item = validated_data.get("food_item")
             nutrition = CalorieAIAssistant(user).extract_food_items_from_meal_source(validated_data.get("meal_source"), food_item)
@@ -321,6 +327,9 @@ class CalorieViewSet(viewsets.ModelViewSet):
             serializer = LoggedWorkoutSerializer(data=request.data)
             if not serializer.is_valid():
                 return CustomErrorResponse(message=serializer.errors, status=400)
+            
+            if not hasattr(self.request.user, "calorie_qa"):
+                return CustomErrorResponse(message="You are yet to set up your calories profile!", status=400)
             
             validated_data = serializer.validated_data
             worked_out_calories = CalorieAIAssistant(user).estimate_logged_workout_calories(validated_data['title'], validated_data['duration_minutes'], 
@@ -360,6 +369,8 @@ class CalorieViewSet(viewsets.ModelViewSet):
     )
     def get_logged_work_out(self, request, day, *args, **kwargs):
         user = request.user
+        if not hasattr(self.request.user, "calorie_qa"):
+                return CustomErrorResponse(message="You are yet to set up your calories profile!", status=400)
         day = date.fromisoformat(day) or timezone.now().date()
         meals = LoggedWorkout.objects.filter(user=user, date=day)
         serializer = LoggedWorkoutSerializer(meals, many=True)
@@ -385,7 +396,7 @@ class CalorieViewSet(viewsets.ModelViewSet):
     def get_logged_meal(self, request, day, *args, **kwargs):
         user = request.user
         day = date.fromisoformat(day) or timezone.now().date()
-        meals = LoggedMeal.objects.filter(user=user, date=day)
+        meals = LoggedMeal.objects.filter(user=user, date__date=day)
         serializer = LoggedMealSerializer(meals, many=True)
         return CustomSuccessResponse(data=serializer.data, status=200)
     

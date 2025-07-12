@@ -1,5 +1,6 @@
 from django.db import models
 from accounts.models import User
+from calories.choices import ReminderChoices
 from common.models import BaseModel
 
 MEAL_TYPES = [
@@ -33,7 +34,7 @@ class CalorieQA(BaseModel):
     goal_weight = models.FloatField()
     weight_unit = models.CharField(max_length=5, choices=WEIGHT_UNITS, default="kg")
     eating_style = models.CharField(max_length=400)
-    reminder = models.CharField(max_length=400)
+    reminder = models.CharField(max_length=400, choices=ReminderChoices, default=ReminderChoices.Daily)
     allow_smart_food_suggestions = models.BooleanField(default=False)
     goal_timeline = models.DateTimeField(blank=True, null=True)
     

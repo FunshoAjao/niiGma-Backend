@@ -30,6 +30,21 @@ app.conf.beat_schedule = {
         "task": "ovulations.services.tasks.update_all_cycle_states",
         "schedule": crontab(minute='*/50'),  # Runs every 50 minutes
     },
+    
+    
+    # for reminder
+    "daily-user-meal-reminder": {
+        "task": "reminders.services.tasks.trigger_user_daily_meal_reminders",
+        "schedule": crontab(hour=9, minute=0),  # 9:00 AM every day
+    },
+    "periodic-user-meal-reminder": {
+        "task": "reminders.services.tasks.trigger_send_reminders_if_user_forgot_to_log_meal",
+        "schedule": crontab(minute=0, hour='17-21'),  # Every hour from 5 PM to 9 PM
+    },
+    "weekly-insights_reminder": {
+        "task": "reminders.services.tasks.trigger_weekly_insights_for_all_users",
+        "schedule": crontab(hour=11, minute=0, day_of_week='6,0'),  # Saturday (6) and Sunday (0) at 11:00 AM
+    },
 }
 
 

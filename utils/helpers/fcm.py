@@ -24,7 +24,7 @@ class WebPushNotification(DeviceInterface):
                 notification=messaging.WebpushNotification(
                     title="FundusAI",
                     body=f"{title}",
-                    icon="https://res.cloudinary.com/dvqq2r2zc/image/upload/v1717184171/logo_eye_g9wdkq.png",  # URL to the icon
+                    icon="https://res.cloudinary.com/dv86ryr55/image/upload/v1749732930/Niigma_logo_sbuu9t.jpg",  # URL to the icon
                 ),
                 data={"summary": f"{body}"},
             ),
@@ -44,7 +44,7 @@ class AndroidPushNotification(DeviceInterface):
                 notification=messaging.AndroidNotification(
                     title=title,
                     body=body,
-                    icon="https://res.cloudinary.com/dvqq2r2zc/image/upload/v1717184171/logo_eye_g9wdkq.png",
+                    icon="https://res.cloudinary.com/dv86ryr55/image/upload/v1749732930/Niigma_logo_sbuu9t.jpg",
                     color="#00BCD4",  # More enticing, modern teal
                 ),
             ),
@@ -70,7 +70,7 @@ class IOSPushNotification(DeviceInterface):
                     ),
                 ),
                 fcm_options=messaging.APNSFCMOptions(
-                    image="https://res.cloudinary.com/dvqq2r2zc/image/upload/v1717184171/logo_eye_g9wdkq.png"  # URL to the icon
+                    image="https://res.cloudinary.com/dv86ryr55/image/upload/v1749732930/Niigma_logo_sbuu9t.jpg"  # URL to the icon
                 ),
             ),
             token=registration_token,
