@@ -35,7 +35,8 @@ app.conf.beat_schedule = {
     # for reminder
     "daily-user-meal-reminder": {
         "task": "reminders.services.tasks.trigger_user_daily_meal_reminders",
-        "schedule": crontab(hour=9, minute=0),  # 9:00 AM every day
+        # "schedule": crontab(hour=9, minute=0),  # 9:00 AM every day
+        "schedule": crontab(minute=0),  # 9:00 AM every day
     },
     "periodic-user-meal-reminder": {
         "task": "reminders.services.tasks.trigger_send_reminders_if_user_forgot_to_log_meal",
@@ -43,7 +44,8 @@ app.conf.beat_schedule = {
     },
     "weekly-insights_reminder": {
         "task": "reminders.services.tasks.trigger_weekly_insights_for_all_users",
-        "schedule": crontab(hour=11, minute=0, day_of_week='6,0'),  # Saturday (6) and Sunday (0) at 11:00 AM
+        # "schedule": crontab(hour=11, minute=0, day_of_week='6,0'),  # Saturday (6) and Sunday (0) at 11:00 AM
+        "schedule": crontab(hour=17, minute=0, day_of_week='6,0'),  # Friday is day 5
     },
 }
 
