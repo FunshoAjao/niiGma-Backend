@@ -1,10 +1,11 @@
 import json
 import logging
+import re
 logger = logging.getLogger(__name__)
 import requests
 from uuid import uuid4
 from accounts.choices import Section
-from calories.serializers import MealSource
+from calories.serializers import LoggedMealSerializer, MealSource
 from utils.helpers.ai_service import OpenAIClient
 from accounts.models import PromptHistory
 import requests
@@ -16,8 +17,9 @@ from datetime import date
 from django.db.models import Sum
 
 class CalorieAIAssistant:
-    def __init__(self, user):
+    def __init__(self, user, logged_meal : LoggedMealSerializer=None):
         self.user = user
+        self.logged_meal = logged_meal
 
     def compare_logged_vs_suggested(self, target_date: date)-> dict:
         results = {}
@@ -428,6 +430,34 @@ class CalorieAIAssistant:
         # Bulk insert meals for the day
         SuggestedMeal.objects.bulk_create(meal_entries)
         
+    def _extract_grams_from_serving_size(self, serving_size_str):
+        # e.g. "30g", "1 slice (25 g)", etc.
+        match = re.search(r"(\d+(?:\.\d+)?)\s?g", serving_size_str.lower())
+        return float(match.group(1)) if match else None
+    
+    def _get_weight_in_grams(self, unit, food_name, servings, product):
+        # Default weight if we can't find any
+        default_grams = 100
+
+        if unit == "gram":
+            return servings  # user specified grams directly
+
+        elif unit == "serving":
+            serving_size = product.get("serving_size", "")
+            grams = self._extract_grams_from_serving_size(serving_size)
+            return grams * servings if grams else default_grams * servings
+
+        elif unit == "slice":
+            SLICE_TO_GRAMS = {
+                "bread": 30,
+                "cheese": 20,
+                "cake": 80,
+            }
+            food_key = food_name.lower()
+            grams_per_slice = SLICE_TO_GRAMS.get(food_key, default_grams)
+            return grams_per_slice * servings
+
+        return default_grams * servings
         
     def get_food_by_barcode(self, barcode: str) -> dict:
         try:
@@ -453,12 +483,25 @@ class CalorieAIAssistant:
                 logger.info(f"name: {product.get('product_name', 'Unknown')}")
                 print(f"name of the product logged by barcode: {product.get('product_name', 'Unknown')}")
                 
+                nutriments = product.get("nutriments", {})
+                food_name = product.get("product_name", "Unknown")
+                
+                # Nutrients per 100g
+                kcal = float(nutriments.get("energy-kcal_100g", 0))
+                protein = float(nutriments.get("proteins_100g", 0))
+                carbs = float(nutriments.get("carbohydrates_100g", 0))
+                fats = float(nutriments.get("fat_100g", 0))
+
+                total_grams = self._get_weight_in_grams(self.logged_meal['measurement_unit'], food_name, 
+                                                        self.logged_meal['number_of_servings_or_gram_or_slices'], product)
+                multiplier = total_grams / 100
+                
                 return {
-                    "name": product.get("product_name", "Unknown"),
-                    "calories": float(product.get("nutriments", {}).get("energy-kcal_100g", 0)),
-                    "protein": float(product.get("nutriments", {}).get("proteins_100g", 0)),
-                    "carbs": float(product.get("nutriments", {}).get("carbohydrates_100g", 0)),
-                    "fats": float(product.get("nutriments", {}).get("fat_100g", 0)),
+                    "name": food_name,
+                    "calories": round(kcal * multiplier, 2),
+                    "protein": round(protein * multiplier, 2),
+                    "carbs": round(carbs * multiplier, 2),
+                    "fats": round(fats * multiplier, 2),
                 }
             else:
                 logger.error(f"Barcode lookup failed with status {response.status_code}")
@@ -493,7 +536,7 @@ class CalorieAIAssistant:
         else: return {}
         
         
-    def estimate_nutrition_with_ai(self, description, number_of_servings, measurement_unit) -> dict:
+    def estimate_nutrition_with_ai(self, description, number_of_servings_or_gram_or_slices, measurement_unit) -> dict:
         user_country = getattr(self.user, "country", "Nigeria")
         prompt = f"""
             You are a knowledgeable nutritionist.
@@ -502,7 +545,7 @@ class CalorieAIAssistant:
 
             "{description}"
 
-            The food was consumed in **{number_of_servings} {measurement_unit}(s)**.
+            The food was consumed in **{number_of_servings_or_gram_or_slices} {measurement_unit}(s)**.
 
             Base your estimates on standard portion sizes typical of {user_country} unless otherwise specified.
 

@@ -52,7 +52,7 @@ class LoggedMealSerializer(serializers.ModelSerializer):
     class Meta:
         model = LoggedMeal
         fields = ['meal_type', 'food_item', 'date', 'calories', 'protein', 'carbs', 'fats',
-                  'meal_source', 'image_url', 'number_of_servings', 'measurement_unit', 'barcode']
+                  'meal_source', 'image_url', 'number_of_servings_or_gram_or_slices', 'measurement_unit', 'barcode']
         read_only_fields = ['calories', 'protein', 'carbs', 'fats', 'id', 'user', 'created_at', 'updated_at']  
         
     def validate(self, data):

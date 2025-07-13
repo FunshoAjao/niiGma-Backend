@@ -44,7 +44,7 @@ class SuggestedWorkoutAdmin(admin.ModelAdmin):
 
 @admin.register(LoggedMeal)
 class LoggedMealAdmin(admin.ModelAdmin):
-    list_display = ("user", "meal_type", "food_item", "calories", "date", "number_of_servings")
+    list_display = ("user", "meal_type", "food_item", "calories", "date", "number_of_servings_or_gram_or_slices")
     search_fields = ("user__username", "food_item")
     list_filter = ("meal_type", "measurement_unit", "date")
 

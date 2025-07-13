@@ -269,8 +269,8 @@ class CalorieViewSet(viewsets.ModelViewSet):
             food_item = validated_data.get("food_item")
             barcode = validated_data.get("barcode")
             
-            nutrition = CalorieAIAssistant(user).extract_food_items_from_meal_source(
-                validated_data.get("meal_source"), validated_data['number_of_servings'], 
+            nutrition = CalorieAIAssistant(user, validated_data).extract_food_items_from_meal_source(
+                validated_data.get("meal_source"), validated_data['number_of_servings_or_gram_or_slices'], 
                 validated_data['measurement_unit'], food_item, barcode)
             
             if not nutrition:
@@ -288,7 +288,7 @@ class CalorieViewSet(viewsets.ModelViewSet):
                 date=validated_data.get("date", timezone.now().date()),
                 defaults={
                     'food_item': validated_data['food_item'],
-                    'number_of_servings': validated_data['number_of_servings'],
+                    'number_of_servings_or_gram_or_slices': validated_data['number_of_servings_or_gram_or_slices'],
                     'measurement_unit': validated_data['measurement_unit'],
                     **nutrition
                 }
