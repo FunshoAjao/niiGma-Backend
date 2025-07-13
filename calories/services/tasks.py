@@ -464,7 +464,7 @@ class CalorieAIAssistant:
                 logger.error(f"Barcode lookup failed with status {response.status_code}")
                 raise ConnectionError("Unable to fetch data from food database.")
             
-        except (requests.exceptions.RequestException, ConnectionError, Exception) as e:
+        except (requests.exceptions.RequestException, Exception) as e:
             logger.error(f"Barcode API request failed: {e}")
             raise serializers.ValidationError(
                         {"message": f"Could not connect to barcode nutrition API. Please try again later. {e}", "status": "failed"},

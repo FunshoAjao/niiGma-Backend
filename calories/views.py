@@ -277,7 +277,8 @@ class CalorieViewSet(viewsets.ModelViewSet):
                 return CustomErrorResponse(message="Nutrition estimation failed", status=400)
             
             if validated_data['meal_source'] == MealSource.Barcode:
-                validated_data['food_item'] = nutrition['food_name']
+                food_item = nutrition.pop('food_name', None)
+                validated_data['food_item'] = food_item
             else:
                 nutrition.pop("food_item", None)
                 
