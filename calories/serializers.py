@@ -24,7 +24,7 @@ class CalorieAISerializer(serializers.Serializer):
 class SuggestedMealSerializer(serializers.ModelSerializer):
     class Meta:
         model = SuggestedMeal
-        fields = ["meal_type", "food_item", "calories", "protein", "carbs", "fats", 'date']
+        fields = ["meal_type", "food_item", "calories", "protein", "carbs", "fats", 'date', 'id']
         read_only_fields = [
             "calorie_goal", "date", "id", "created_at", "updated_at"
         ]
@@ -52,7 +52,7 @@ class LoggedMealSerializer(serializers.ModelSerializer):
     class Meta:
         model = LoggedMeal
         fields = ['meal_type', 'food_item', 'date', 'calories', 'protein', 'carbs', 'fats',
-                  'meal_source', 'image_url', 'number_of_servings_or_gram_or_slices', 'measurement_unit', 'barcode']
+                  'meal_source', 'image_url', 'number_of_servings_or_gram_or_slices', 'measurement_unit', 'barcode', 'id']
         read_only_fields = ['calories', 'protein', 'carbs', 'fats', 'id', 'user', 'created_at', 'updated_at']  
         
     def validate(self, data):

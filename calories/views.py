@@ -384,6 +384,38 @@ class CalorieViewSet(viewsets.ModelViewSet):
         serializer = LoggedWorkoutSerializer(meals, many=True)
         return CustomSuccessResponse(data=serializer.data, status=200)
     
+    @action(
+        methods=["delete"],
+        detail=False,
+        url_path="delete_meal/(?P<id>[^/.]+)",
+        permission_classes=[IsAuthenticated]
+    )
+    def delete_meal(self, request, *args, **kwargs):
+        user = request.user
+        logged_meal = kwargs['id']
+        try:
+            meal = LoggedMeal.objects.get(user=user, id=logged_meal)
+        except LoggedMeal.DoesNotExist:
+            return CustomErrorResponse(message="Resource not found!")
+        meal.delete()
+        return CustomSuccessResponse(message="Meal deleted successfully", status=200)
+    
+    @action(
+        methods=["delete"],
+        detail=False,
+        url_path="delete_work_out/(?P<id>[^/.]+)",
+        permission_classes=[IsAuthenticated]
+    )
+    def delete_work_out(self, request, *args, **kwargs):
+        user = request.user
+        logged_meal = kwargs['id']
+        try:
+            meal = LoggedWorkout.objects.get(user=user, id=logged_meal)
+        except LoggedWorkout.DoesNotExist:
+            return CustomErrorResponse(message="Resource not found!")
+        meal.delete()
+        return CustomSuccessResponse(message="Workout deleted successfully", status=200)
+    
     @extend_schema(
         parameters=[
             OpenApiParameter(
