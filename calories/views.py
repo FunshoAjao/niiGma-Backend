@@ -5,7 +5,7 @@ from common.responses import CustomErrorResponse, CustomSuccessResponse
 from django.utils import timezone
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework import viewsets
-
+from django.db.models import Q
 from utils.helpers.services import clean_insight
 from .models import *
 from .serializers import CalorieAISerializer, CalorieSerializer, LoggedMealSerializer, LoggedWorkoutSerializer, MealSource, SuggestedMealSerializer, SuggestedWorkoutSerializer
@@ -358,15 +358,47 @@ class CalorieViewSet(viewsets.ModelViewSet):
 
             return CustomSuccessResponse(message="Workout logged successfully!", status=200)
     
+    
+
     @extend_schema(
         parameters=[
             OpenApiParameter(
                 name='day',
                 type=OpenApiTypes.DATE,
                 location=OpenApiParameter.PATH,
-                description='Date in YYYY-MM-DD format',
+                description='Date in YYYY-MM-DD format to get logged workouts for.',
                 required=True
-            )
+            ),
+            OpenApiParameter(
+                name='title',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description="Filter by workout title (e.g. 'Morning Run')"
+            ),
+            OpenApiParameter(
+                name='intensity',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description="Filter by workout intensity: 'low', 'medium', or 'high'"
+            ),
+            OpenApiParameter(
+                name='min_calories_burned',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description="Minimum estimated calories burned"
+            ),
+            OpenApiParameter(
+                name='max_calories_burned',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description="Maximum estimated calories burned"
+            ),
+            OpenApiParameter(
+                name='search',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description="Search keyword in workout title or description"
+            ),
         ]
     )
     @action(
@@ -377,12 +409,44 @@ class CalorieViewSet(viewsets.ModelViewSet):
     )
     def get_logged_work_out(self, request, day, *args, **kwargs):
         user = request.user
-        if not hasattr(self.request.user, "calorie_qa"):
-                return CustomErrorResponse(message="You are yet to set up your calories profile!", status=400)
-        day = date.fromisoformat(day) or timezone.now().date()
-        meals = LoggedWorkout.objects.filter(user=user, date=day)
-        serializer = LoggedWorkoutSerializer(meals, many=True)
+
+        if not hasattr(user, "calorie_qa"):
+            return CustomErrorResponse(message="You are yet to set up your calories profile!", status=400)
+
+        try:
+            day = date.fromisoformat(day)
+        except ValueError:
+            return CustomErrorResponse(message="Invalid date format. Use YYYY-MM-DD.", status=400)
+
+        workouts = LoggedWorkout.objects.filter(user=user, date=day)
+
+        # Apply optional query filters
+        title = request.query_params.get("title")
+        intensity = request.query_params.get("intensity")
+        min_calories = request.query_params.get("min_calories_burned")
+        max_calories = request.query_params.get("max_calories_burned")
+        search = request.query_params.get("search")
+
+        if title:
+            workouts = workouts.filter(title__icontains=title)
+
+        if intensity:
+            workouts = workouts.filter(intensity__iexact=intensity)
+
+        if min_calories:
+            workouts = workouts.filter(estimated_calories_burned__gte=int(min_calories))
+
+        if max_calories:
+            workouts = workouts.filter(estimated_calories_burned__lte=int(max_calories))
+
+        if search:
+            workouts = workouts.filter(
+                Q(title__icontains=search) | Q(description__icontains=search)
+            )
+
+        serializer = LoggedWorkoutSerializer(workouts, many=True)
         return CustomSuccessResponse(data=serializer.data, status=200)
+
     
     @action(
         methods=["delete"],
@@ -415,7 +479,8 @@ class CalorieViewSet(viewsets.ModelViewSet):
             return CustomErrorResponse(message="Resource not found!")
         meal.delete()
         return CustomSuccessResponse(message="Workout deleted successfully", status=200)
-    
+
+
     @extend_schema(
         parameters=[
             OpenApiParameter(
@@ -424,7 +489,25 @@ class CalorieViewSet(viewsets.ModelViewSet):
                 location=OpenApiParameter.PATH,
                 description='Date in YYYY-MM-DD format',
                 required=True
-            )
+            ),
+            OpenApiParameter(
+                name='meal_type',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description="Optional: Filter by meal type (e.g. 'breakfast', 'lunch', 'dinner')"
+            ),
+            OpenApiParameter(
+                name='food_item',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description="Optional: Filter by food item name"
+            ),
+            OpenApiParameter(
+                name='search',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description="Search across meal type or food item"
+            ),
         ]
     )
     @action(
@@ -435,12 +518,97 @@ class CalorieViewSet(viewsets.ModelViewSet):
     )
     def get_logged_meal(self, request, day, *args, **kwargs):
         user = request.user
-        day = date.fromisoformat(day) or timezone.now().date()
+        try:
+            day = date.fromisoformat(day)
+        except ValueError:
+            return CustomErrorResponse(message="Invalid date format. Use YYYY-MM-DD", status=400)
+
         meals = LoggedMeal.objects.filter(user=user, date__date=day)
+
+        # Optional filters
+        meal_type = request.query_params.get("meal_type")
+        food_item = request.query_params.get("food_item")
+        search = request.query_params.get("search")
+
+        if meal_type:
+            meals = meals.filter(meal_type__iexact=meal_type)
+
+        if food_item:
+            meals = meals.filter(food_item__icontains=food_item)
+
+        if search:
+            meals = meals.filter(
+                models.Q(food_item__icontains=search) | models.Q(meal_type__icontains=search)
+            )
+
         serializer = LoggedMealSerializer(meals, many=True)
         return CustomSuccessResponse(data=serializer.data, status=200)
+
     
-    
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name='created_at',
+                type=OpenApiTypes.DATETIME,
+                location=OpenApiParameter.QUERY,
+                description="Filter by when the meal was logged (ISO format)."
+            ),
+            OpenApiParameter(
+                name='date',
+                type=OpenApiTypes.DATE,
+                location=OpenApiParameter.QUERY,
+                description="Filter by the date the meal was eaten (e.g., '2025-07-13')."
+            ),
+            OpenApiParameter(
+                name='meal_type',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description="Filter by meal type: 'breakfast', 'lunch', or 'dinner'."
+            ),
+            OpenApiParameter(
+                name='food_item',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description="Filter by food item name (e.g., 'Boiled Egg')."
+            ),
+            OpenApiParameter(
+                name='calories',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description="Filter meals by total calorie count (exact match)."
+            ),
+            OpenApiParameter(
+                name='protein',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description="Filter by grams of protein in the meal."
+            ),
+            OpenApiParameter(
+                name='carbs',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description="Filter by grams of carbohydrates in the meal."
+            ),
+            OpenApiParameter(
+                name='fats',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description="Filter by grams of fat in the meal."
+            ),
+            OpenApiParameter(
+                name='search',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description="Search keyword across date, meal type, food item, and nutrition fields."
+            ),
+            OpenApiParameter(
+                name='ordering',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description="Order results by a field (e.g., 'calories', '-created_at')."
+            ),
+        ]
+    )
     @action(
         methods=["get"],
         detail=False,
@@ -461,6 +629,76 @@ class CalorieViewSet(viewsets.ModelViewSet):
         serializer = LoggedMealSerializer(page, many=True)
         return self.get_paginated_response(serializer.data)
     
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name='created_at',
+                type=OpenApiTypes.DATETIME,
+                location=OpenApiParameter.QUERY,
+                description="Filter by when the suggested meal was created (ISO format)."
+            ),
+            OpenApiParameter(
+                name='date',
+                type=OpenApiTypes.DATE,
+                location=OpenApiParameter.QUERY,
+                description="Filter by the date the meal is suggested for (e.g., '2025-07-13')."
+            ),
+            OpenApiParameter(
+                name='meal_type',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description="Filter by meal type: 'breakfast', 'lunch', or 'dinner'."
+            ),
+            OpenApiParameter(
+                name='meal_name',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description="Filter by the name of the meal (e.g., 'Chicken Salad')."
+            ),
+            OpenApiParameter(
+                name='food_item',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description="Filter by specific food items contained in the meal."
+            ),
+            OpenApiParameter(
+                name='calories',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description="Filter meals by their total calorie count (exact match)."
+            ),
+            OpenApiParameter(
+                name='protein',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description="Filter by grams of protein in the suggested meal."
+            ),
+            OpenApiParameter(
+                name='carbs',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description="Filter by grams of carbohydrates in the meal."
+            ),
+            OpenApiParameter(
+                name='fats',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description="Filter by grams of fat in the meal."
+            ),
+            OpenApiParameter(
+                name='search',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description="Search keyword across date, email, meal type, meal name, food item, and nutrition fields."
+            ),
+            OpenApiParameter(
+                name='ordering',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description="Order results by one or more fields (e.g., 'calories', '-created_at')."
+            ),
+        ]
+    )
     @action(
         methods=["get"],
         detail=False,
