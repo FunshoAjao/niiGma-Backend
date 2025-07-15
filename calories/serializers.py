@@ -48,7 +48,8 @@ class SuggestedWorkoutSerializer(serializers.ModelSerializer):
     
 class LoggedMealSerializer(serializers.ModelSerializer):
     meal_source = serializers.ChoiceField(choices=MealSource.choices, default=MealSource.Manual)
-    barcode = serializers.CharField(required=False)
+    barcode = serializers.CharField(required=False, allow_null=True)
+    image_url = serializers.ImageField(allow_null=True)
     class Meta:
         model = LoggedMeal
         fields = ['meal_type', 'food_item', 'date', 'calories', 'protein', 'carbs', 'fats',
@@ -92,8 +93,8 @@ class SampleLoggedWorkoutSerializer(serializers.Serializer):
 class SampleLoggedMealSerializer(serializers.Serializer):
     food_item = serializers.CharField(required=True)
     meal_source = serializers.ChoiceField(choices=MealSource.choices, default=MealSource.Manual)
-    barcode = serializers.CharField(required=False)
-    image_url = serializers.ImageField(required=False)
+    barcode = serializers.CharField(required=False, allow_null=True)
+    image_url = serializers.ImageField(required=False, allow_null=True)
     
     def validate(self, data):
         meal_source = data.get('meal_source')

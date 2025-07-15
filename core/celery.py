@@ -43,7 +43,7 @@ app.conf.beat_schedule = {
     },
     "weekly-insights_reminder": {
         "task": "reminders.services.tasks.trigger_weekly_insights_for_all_users",
-        "schedule": crontab(hour=11, minute=0, day_of_week='6,0,1'),  # Saturday (6) and Sunday (0) at 11:00 AM
+        "schedule": crontab(hour=11, minute=0, day_of_week='6,0'),  # Saturday (6) and Sunday (0) at 11:00 AM
     },
 }
 
