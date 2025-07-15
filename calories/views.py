@@ -268,10 +268,11 @@ class CalorieViewSet(viewsets.ModelViewSet):
             validated_data = serializer.validated_data
             food_item = validated_data.get("food_item")
             barcode = validated_data.get("barcode")
+            scanned_image = validated_data.get("image_url")
             
             nutrition = CalorieAIAssistant(user, validated_data).extract_food_items_from_meal_source(
                 validated_data.get("meal_source"), validated_data['number_of_servings_or_gram_or_slices'], 
-                validated_data['measurement_unit'], food_item, barcode)
+                validated_data['measurement_unit'], food_item, barcode, scanned_image)
             
             if not nutrition:
                 return CustomErrorResponse(message="Nutrition estimation failed", status=400)
@@ -279,8 +280,13 @@ class CalorieViewSet(viewsets.ModelViewSet):
             if validated_data['meal_source'] == MealSource.Barcode:
                 food_item = nutrition.pop('food_name', None)
                 validated_data['food_item'] = food_item
-            else:
+            elif validated_data['meal_source'] == MealSource.Manual:
                 nutrition.pop("food_item", None)
+            elif validated_data['meal_source'] == MealSource.Scanned:
+                food_item = nutrition.pop('food_name', None)
+                number_of_servings_or_gram_or_slices = nutrition.pop('servings', None)
+                validated_data['food_item'] = food_item
+                validated_data['number_of_servings_or_gram_or_slices'] = number_of_servings_or_gram_or_slices
                 
             LoggedMeal.objects.update_or_create(
                 user=user,

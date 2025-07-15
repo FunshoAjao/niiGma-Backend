@@ -1,8 +1,12 @@
 import json
 import logging
 import re
+
+from utils.helpers.cloudinary import CloudinaryFileUpload
 logger = logging.getLogger(__name__)
 import requests
+import base64
+from django.core.files.base import ContentFile
 from uuid import uuid4
 from accounts.choices import Section
 from calories.serializers import LoggedMealSerializer, MealSource
@@ -101,7 +105,7 @@ class CalorieAIAssistant:
         
         if not response:
             raise serializers.ValidationError(
-                {"message": "Failed to get a response from the AI service.", "status": "failed"},
+                {"message": "Failed to get a response from the Niigma AI service.", "status": "failed"},
                 code=500
             )
         PromptHistory.objects.create(
@@ -142,7 +146,7 @@ class CalorieAIAssistant:
         response = OpenAIClient.generate_response(prompt)
         if not response:
             raise serializers.ValidationError(
-                {"message": "Failed to get a response from the AI service.", "status": "failed"},
+                {"message": "Failed to get a response from the Niigma AI service.", "status": "failed"},
                 code=500
             )
         
@@ -177,7 +181,7 @@ class CalorieAIAssistant:
         response = OpenAIClient.generate_response(prompt)
         if not response:
             raise serializers.ValidationError(
-                {"message": "Failed to get a response from the AI service.", "status": "failed"},
+                {"message": "Failed to get a response from the Niigma AI service.", "status": "failed"},
                 code=500
             )
         if conversation_id is None:
@@ -197,7 +201,7 @@ class CalorieAIAssistant:
         response = OpenAIClient.chat_with_base64_image(base64_image, text, prompt)
         if not response:
             raise serializers.ValidationError(
-                {"message": "Failed to get a response from the AI service.", "status": "failed"},
+                {"message": "Failed to get a response from the Niigma AI service.", "status": "failed"},
                 code=500
             )
         PromptHistory.objects.create(
@@ -323,7 +327,7 @@ class CalorieAIAssistant:
         response = OpenAIClient.generate_daily_meal_plan(prompt)
         if response is None:
             raise serializers.ValidationError(
-                {"message": "Failed to get a response from the AI service.", "status": "failed"},
+                {"message": "Failed to get a response from the Niigma AI service.", "status": "failed"},
                 code=500
             )
         return response
@@ -515,7 +519,8 @@ class CalorieAIAssistant:
                     )
     
     def extract_food_items_from_meal_source(self, meal_source, serving_count=1,
-                                            measurement_unit="serving", food_description=None, barcode=None) -> dict:
+                                            measurement_unit="serving", food_description=None,
+                                            barcode=None, scanned_image=None) -> dict:
         if meal_source == MealSource.Barcode:
             food_item = self.get_food_by_barcode(barcode)
             if food_item:
@@ -531,7 +536,7 @@ class CalorieAIAssistant:
             return self.estimate_nutrition_with_ai(food_description, serving_count, measurement_unit)
         
         elif meal_source == MealSource.Scanned:
-            return self.analyze_food_image(meal_source.get("scanned_image"))
+            return self.analyze_food_image(scanned_image)
         
         else: return {}
         
@@ -608,7 +613,7 @@ class CalorieAIAssistant:
 
         except (KeyError, ValueError) as e:
             raise serializers.ValidationError(
-                {"message": "Failed to extract nutrition info from AI response.", "error": str(e)},
+                {"message": "Failed to extract nutrition info from Niigma AI response.", "error": str(e)},
                 code=500
             )
         
@@ -641,7 +646,7 @@ class CalorieAIAssistant:
         
         if not nutrition:
             raise serializers.ValidationError(
-                {"message": "Failed to get a response from the AI service.", "status": "failed"},
+                {"message": "Failed to get a response from the Niigma AI service.", "status": "failed"},
                 code=500
             )
             
@@ -650,7 +655,7 @@ class CalorieAIAssistant:
             nutrition = json.loads(nutrition)
         except json.JSONDecodeError:
             raise serializers.ValidationError(
-                {"message": "AI response could not be parsed as valid JSON.", "status": "failed"},
+                {"message": "Niigma AI response could not be parsed as valid JSON.", "status": "failed"},
                 code=500
             )
         
@@ -690,7 +695,7 @@ class CalorieAIAssistant:
         workout_calorie_data = OpenAIClient.generate_daily_meal_plan(prompt)
         if workout_calorie_data is None:
             raise serializers.ValidationError(
-                {"message": "Failed to get a response from the AI service.", "status": "failed"},
+                {"message": "Failed to get a response from the Niigma AI service.", "status": "failed"},
                 code=500
             )
         
@@ -732,7 +737,7 @@ class CalorieAIAssistant:
             calories = int(response.strip())
         except (ValueError, AttributeError):
             raise serializers.ValidationError(
-                {"message": "Failed to parse calorie estimate from AI response.", "status": "failed"},
+                {"message": "Failed to parse calorie estimate from Niigma AI response.", "status": "failed"},
                 code=500
             )
         return calories
@@ -776,29 +781,62 @@ class CalorieAIAssistant:
             workout_data = json.loads(response)
             required_keys = ["title", "duration", "intensity", "estimated_calories_burned", "steps"]
             if not all(k in workout_data for k in required_keys):
-                raise ValueError("Missing one or more required fields in AI response.")
+                raise ValueError("Missing one or more required fields in Niigma AI response.")
 
             return workout_data
 
         except (ValueError, AttributeError) as e:
             raise serializers.ValidationError(
-                {"message": "Failed to extract workout data from AI response.", "error": str(e), "status": "failed"},
+                {"message": "Failed to extract workout data from Niigma AI response.", "error": str(e), "status": "failed"},
                 code=500
             )
 
+    def analyze_food_image(self, base64_image=None):
+        image_file = self.save_image_from_base64(base64_image)
+        file_name = f'{self.user.first_name} {self.user.id}-meal_image'
+        image_url = CloudinaryFileUpload().upload_file_to_cloudinary(image_file, file_name)
+        
+        nutrition_info = self.analyze_meal_with_ai(image_url)
+        
+        return nutrition_info
+        
+    def save_image_from_base64(self, base64_str):
+        """Decode base64 image and prepare as file for upload"""
+        format_, imgstr = base64_str.split(';base64,')
+        ext = format_.split('/')[-1]
+        return ContentFile(base64.b64decode(imgstr), name='meal_image.' + ext)
 
+    
+    def analyze_meal_with_ai(self, image_url: str) -> dict:
+        prompt = (
+            "You're a nutritionist. Analyze this food image. "
+            "Respond strictly in JSON format with the following keys: "
+            "'food_name', 'calories', 'protein', 'carbs', 'fats', 'servings'. "
+            "All values should be numbers except food_name. Assume a common serving size."
+            "Do NOT include any markdown, backticks, or extra text—return ONLY the JSON object."
+        )
 
-    def analyze_food_image(self, image_base64=None):
-        # 1. Send to Google Cloud Vision -> get labels
-        # 2. Send label to Nutritionix API to get calories
-        # Pseudocode due to API complexity
-        food_name = "grilled chicken"  # label from Vision
-        # Then call Nutritionix API to get nutrition info
-        return {
-            "name": food_name,
-            "calories": 300,
-            "protein": 25,
-            "carbs": 5,
-            "fat": 10,
-        }
+        response = OpenAIClient.chat_with_base64_image(image_url, prompt)
+
+        if not response or not isinstance(response, str):
+            raise serializers.ValidationError(
+                {"message": "Empty or invalid response from Niigma AI", "status": "failed"},
+                code=500
+            )
+
+        try:
+            print("Raw AI Response:", response)  # Debug log
+            nutrition = json.loads(response.strip())
+            return nutrition
+
+        except json.JSONDecodeError as e:
+            raise serializers.ValidationError(
+                {
+                    "message": "Invalid JSON format returned from Niigma AI.",
+                    "error": str(e),
+                    "raw_response": response,
+                    "status": "failed"
+                },
+                code=500
+            )
 

@@ -49,7 +49,9 @@ class SuggestedWorkoutSerializer(serializers.ModelSerializer):
 class LoggedMealSerializer(serializers.ModelSerializer):
     meal_source = serializers.ChoiceField(choices=MealSource.choices, default=MealSource.Manual)
     barcode = serializers.CharField(required=False, allow_null=True)
-    image_url = serializers.ImageField(allow_null=True)
+    image_url = serializers.CharField(allow_null=True)
+    food_item = serializers.CharField(allow_null=True, allow_blank=True)
+    number_of_servings_or_gram_or_slices = serializers.IntegerField(allow_null=True)
     class Meta:
         model = LoggedMeal
         fields = ['meal_type', 'food_item', 'date', 'calories', 'protein', 'carbs', 'fats',
@@ -59,10 +61,24 @@ class LoggedMealSerializer(serializers.ModelSerializer):
     def validate(self, data):
         meal_source = data.get('meal_source')
         barcode = data.get('barcode')
-
+        image_url = data.get('image_url')
+        food_item = data.get('food_item')
+        
+        if meal_source != MealSource.Scanned and food_item is None:
+            raise serializers.ValidationError(
+                {"message": "food item is required!", "status": "failed"},
+                code=400
+            )
+        
         if meal_source == MealSource.Barcode and not barcode:
             raise serializers.ValidationError(
                 {"message": "Barcode is required!", "status": "failed"},
+                code=400
+            )
+        
+        if meal_source == MealSource.Scanned and not image_url:
+            raise serializers.ValidationError(
+                {"message": "Image is required!", "status": "failed"},
                 code=400
             )
 
