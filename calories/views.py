@@ -8,7 +8,7 @@ from rest_framework import viewsets
 from django.db.models import Q
 from utils.helpers.services import clean_insight
 from .models import *
-from .serializers import CalorieAISerializer, CalorieSerializer, LoggedMealSerializer, LoggedWorkoutSerializer, MealSource, SuggestedMealSerializer, SuggestedWorkoutSerializer
+from .serializers import CalorieAISerializer, CalorieSerializer, LoggedMealSerializer, LoggedWorkoutSerializer, MealSource, SampleLoggedMealSerializer, SampleLoggedWorkoutSerializer, SuggestedMealSerializer, SuggestedWorkoutSerializer
 from rest_framework.response import Response
 from rest_framework.exceptions import NotFound
 from rest_framework.decorators import action
@@ -301,30 +301,28 @@ class CalorieViewSet(viewsets.ModelViewSet):
         detail=False,
         url_path="sample_log_meal",
         permission_classes=[IsAuthenticated],
-        serializer_class = LoggedMealSerializer
+        serializer_class = SampleLoggedMealSerializer
     )
     def sample_log_meal(self, request, *args, **kwargs):
-        with transaction.atomic():
-            user = request.user
-            serializer = LoggedMealSerializer(data=request.data)
-            if not serializer.is_valid():
-                return CustomErrorResponse(message=serializer.errors, status=400)
-            
-            if not hasattr(self.request.user, "calorie_qa"):
-                return CustomErrorResponse(message="You are yet to set up your calories profile!", status=400)
-            
-            validated_data = serializer.validated_data
-            food_item = validated_data.get("food_item")
-            barcode = validated_data.get("barcode")
-            
-            nutrition = CalorieAIAssistant(user, validated_data).extract_food_items_from_meal_source(
-                validated_data.get("meal_source"), validated_data['number_of_servings_or_gram_or_slices'], 
-                validated_data['measurement_unit'], food_item, barcode)
-            
-            if not nutrition:
-                return CustomErrorResponse(message="Nutrition estimation failed", data={}, status=400)
-            
-            return CustomSuccessResponse(message="Meal logged successfully!", data=nutrition, status=200)
+        user = request.user
+        serializer = SampleLoggedMealSerializer(data=request.data)
+        if not serializer.is_valid():
+            return CustomErrorResponse(message=serializer.errors, status=400)
+        
+        if not hasattr(self.request.user, "calorie_qa"):
+            return CustomErrorResponse(message="You are yet to set up your calories profile!", status=400)
+        
+        validated_data = serializer.validated_data
+        food_item = validated_data.get("food_item")
+        
+        nutrition = CalorieAIAssistant(user, validated_data).extract_sample_food_items_from_meal_source(
+            validated_data.get("meal_source"), validated_data.get("serving_count"),
+            validated_data.get('measurement_unit'), food_item, validated_data.get('barcode'), validated_data.get('image_url'))
+        
+        if not nutrition:
+            return CustomErrorResponse(message="Nutrition estimation failed", data={}, status=400)
+        
+        return CustomSuccessResponse(message="Sample meal!", data=nutrition, status=200)
         
     @action(
         methods=["post"],
@@ -393,11 +391,11 @@ class CalorieViewSet(viewsets.ModelViewSet):
         detail=False,
         url_path="sample_log_work_out",
         permission_classes=[IsAuthenticated],
-        serializer_class = LoggedWorkoutSerializer
+        serializer_class = SampleLoggedWorkoutSerializer
     )
     def sample_log_work_out(self, request, *args, **kwargs):
         user = request.user
-        serializer = LoggedWorkoutSerializer(data=request.data)
+        serializer = SampleLoggedWorkoutSerializer(data=request.data)
         if not serializer.is_valid():
             return CustomErrorResponse(message=serializer.errors, status=400)
         
@@ -405,20 +403,20 @@ class CalorieViewSet(viewsets.ModelViewSet):
             return CustomErrorResponse(message="You are yet to set up your calories profile!", status=400)
         
         validated_data = serializer.validated_data
-        worked_out_calories = CalorieAIAssistant(user).estimate_logged_workout_calories(validated_data['title'], validated_data['duration_minutes'], 
-                                                                validated_data['description'], validated_data['intensity'], validated_data['steps'])
+        sampled_worked_out_calories = CalorieAIAssistant(user).estimate_sample_logged_workout_details(
+                                                                validated_data['description'])
         
-        if not worked_out_calories:
+        if not sampled_worked_out_calories:
             return CustomErrorResponse(message="Workout estimation failed", status=400)
         
         work_out_data = {
-            'duration_minutes' : validated_data['duration_minutes'],
-            'estimated_calories_burned':worked_out_calories,
-            'title':validated_data['title'],
-            'date':validated_data.get("date", timezone.now().date()),
-            'intensity':validated_data['intensity'],
+            'duration_minutes' : sampled_worked_out_calories['duration'],
+            'estimated_calories_burned':sampled_worked_out_calories['estimated_calories_burned'],
+            'title':sampled_worked_out_calories['title'],
+            'date':timezone.now().date(),
+            'intensity':sampled_worked_out_calories['intensity'],
             'description':validated_data['description'],
-            'steps':validated_data['steps']
+            'steps':sampled_worked_out_calories['steps']
         }
 
         return CustomSuccessResponse(message="Sample workout estimated!", data=work_out_data, status=200)

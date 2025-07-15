@@ -85,3 +85,12 @@ class LoggedWorkoutSerializer(serializers.ModelSerializer):
             "steps"
         ]
         read_only_fields = ("created_at", "updated_at", "user", "estimated_calories_burned")
+        
+class SampleLoggedWorkoutSerializer(serializers.Serializer):
+    description = serializers.CharField(required=True)
+    
+class SampleLoggedMealSerializer(serializers.Serializer):
+    food_item = serializers.CharField(required=True)
+    meal_source = serializers.ChoiceField(choices=MealSource.choices, default=MealSource.Manual)
+    barcode = serializers.CharField(required=False)
+    image_url = serializers.ImageField(required=False)

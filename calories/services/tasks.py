@@ -535,7 +535,84 @@ class CalorieAIAssistant:
         
         else: return {}
         
+    def extract_sample_food_items_from_meal_source(
+        self, 
+        meal_source, 
+        serving_count=1,
+        measurement_unit="serving", 
+        food_description=None, 
+        barcode=None, 
+        scanned_image=None
+    ) -> dict:
+        if meal_source == MealSource.Barcode:
+            food_item = self.get_food_by_barcode(barcode)
+            if food_item:
+                return {
+                    "food_name": food_item["name"],
+                    "calories": food_item["calories"],
+                    "protein": food_item["protein"],
+                    "carbs": food_item["carbs"],
+                    "fats": food_item["fats"],
+                }
+
+        elif meal_source == MealSource.Manual:
+            return self.estimate_food_nutrition_from_description(
+                food_description, measurement_unit
+            )
+
+        elif meal_source == MealSource.Scanned:
+            return self.analyze_food_image(scanned_image)
+
+        return {}
+
+    def estimate_food_nutrition_from_description(self, description: str, measurement_unit: str = "serving") -> dict:
+        prompt = f"""
+        You are a nutrition assistant.
+
+        A user described the following food: "{description}"
+
+        Please provide a structured response in JSON with:
+        - "food_name": Name/title of the food
+        - "calories": Estimated calories for 1 {measurement_unit}
+        - "protein": Grams of protein per {measurement_unit}
+        - "carbs": Grams of carbs per {measurement_unit}
+        - "fats": Grams of fat per {measurement_unit}
+        - "number_of_servings_or_weight_in_grams_or_number_of_slices": Estimated serving weight in grams or slices or number of servings (if applicable)
+
+        Respond strictly in this format:
+        {{
+            "food_name": "...",
+            "title":"...",
+            "calories": ...,
+            "protein": ...,
+            "carbs": ...,
+            "fats": ...,
+            "number_of_servings_or_weight_in_grams_or_number_of_slices": ...
+        }}
+        """
         
+        response = OpenAIClient.chat(prompt)
+        serving_count: int = 1
+        try:
+            data = json.loads(response)
+            # Multiply by serving count if needed
+            return {
+                "food_name": data["food_name"],
+                "title": data["title"],
+                "calories": round(data["calories"] * serving_count),
+                "protein": round(data["protein"] * serving_count),
+                "carbs": round(data["carbs"] * serving_count),
+                "fats": round(data["fats"] * serving_count),
+                "number_of_servings_or_weight_in_grams_or_number_of_slices": data.get("number_of_servings_or_weight_in_grams_or_number_of_slices", None)
+            }
+
+        except (KeyError, ValueError) as e:
+            raise serializers.ValidationError(
+                {"message": "Failed to extract nutrition info from AI response.", "error": str(e)},
+                code=500
+            )
+        
+    
     def estimate_nutrition_with_ai(self, description, number_of_servings_or_gram_or_slices, measurement_unit) -> dict:
         user_country = getattr(self.user, "country", "Nigeria")
         prompt = f"""
@@ -659,6 +736,56 @@ class CalorieAIAssistant:
                 code=500
             )
         return calories
+    
+    def estimate_sample_logged_workout_details(self, workout_description: str, notes: str = "") -> dict:
+        user = self.user
+
+        prompt = f"""
+        You are a fitness assistant.
+
+        A user performed the following activity: "{workout_description}"
+
+        User Details:
+        - Age: {getattr(user, 'age', 'Unknown')}
+        - Weight: {user.calorie_qa.current_weight} {user.calorie_qa.weight_unit}
+        - Height: {getattr(user, 'height', 'Unknown')} {getattr(user, 'height_unit', '')}
+        - Activity Level: {user.calorie_qa.activity_level}
+
+        Additional Notes: {notes}
+
+        Based on the description, provide an estimated summary of the workout including:
+        - Title (short name of the activity)
+        - Duration (in minutes)
+        - Intensity (low, medium, or high)
+        - Estimated Calories Burned (as an integer)
+        - Estimated Steps (if it involves walking or running, else null)
+
+        Respond strictly in JSON format:
+        {{
+            "title": "...",
+            "duration": ...,
+            "intensity": "...",
+            "estimated_calories_burned": ...,
+            "steps": ...
+        }}
+        """
+
+        response = OpenAIClient.chat(prompt)
+
+        try:
+            workout_data = json.loads(response)
+            required_keys = ["title", "duration", "intensity", "estimated_calories_burned", "steps"]
+            if not all(k in workout_data for k in required_keys):
+                raise ValueError("Missing one or more required fields in AI response.")
+
+            return workout_data
+
+        except (ValueError, AttributeError) as e:
+            raise serializers.ValidationError(
+                {"message": "Failed to extract workout data from AI response.", "error": str(e), "status": "failed"},
+                code=500
+            )
+
 
 
     def analyze_food_image(self, image_base64=None):
