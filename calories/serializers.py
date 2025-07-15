@@ -94,3 +94,15 @@ class SampleLoggedMealSerializer(serializers.Serializer):
     meal_source = serializers.ChoiceField(choices=MealSource.choices, default=MealSource.Manual)
     barcode = serializers.CharField(required=False)
     image_url = serializers.ImageField(required=False)
+    
+    def validate(self, data):
+        meal_source = data.get('meal_source')
+        barcode = data.get('barcode')
+
+        if meal_source == MealSource.Barcode and not barcode:
+            raise serializers.ValidationError(
+                {"message": "Barcode is required!", "status": "failed"},
+                code=400
+            )
+
+        return data
