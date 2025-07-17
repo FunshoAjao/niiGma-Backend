@@ -39,7 +39,8 @@ class CycleSetupViewSet(viewsets.ModelViewSet):
             data.get("cycle_length")
         ])
         serializer.save(user=user, setup_complete=setup_complete)
-
+        user.is_ovulation_tracker_setup = True
+        user.save()
         return CustomSuccessResponse(data=serializer.data, message="cycle set up created successfully!")
     
     def update(self, request, *args, **kwargs):

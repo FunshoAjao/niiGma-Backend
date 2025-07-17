@@ -11,7 +11,7 @@ from uuid import uuid4
 from accounts.choices import Section
 from calories.serializers import LoggedMealSerializer, MealSource
 from utils.helpers.ai_service import OpenAIClient
-from accounts.models import PromptHistory
+from accounts.models import PromptHistory, User
 import requests
 from ..models import MEAL_TYPES, CalorieQA, LoggedMeal, SuggestedMeal, SuggestedWorkout, UserCalorieStreak
 from rest_framework import serializers
@@ -20,6 +20,16 @@ from django.utils import timezone
 from django.utils.timezone import now
 from datetime import date
 from django.db.models import Sum
+from celery import shared_task
+
+
+@shared_task
+def update_user_calorie_streak(user_id):
+    try:
+        user = User.objects.get(id=user_id)
+        CalorieAIAssistant(user).update_calorie_streak()
+    except User.DoesNotExist:
+        return
 
 class CalorieAIAssistant:
     def __init__(self, user, logged_meal : LoggedMealSerializer=None):
@@ -851,20 +861,14 @@ class CalorieAIAssistant:
         if not calorie_qa:
             return
 
-        daily_target = calorie_qa.daily_calorie_target
-        lower_bound = daily_target * 0.9
-        upper_bound = daily_target * 1.1
+        if streak.last_streak_date == today:
+            return  # already counted today
 
-        logs = LoggedMeal.objects.filter(user=user, date__date=today)
-        total = sum(log.calories for log in logs)
+        if streak.last_streak_date == today - timedelta(days=1):
+            streak.current_streak += 1
+        else:
+            streak.current_streak = 1
 
-        if lower_bound <= total <= upper_bound:
-            if streak.last_streak_date == yesterday:
-                streak.current_streak += 1
-            else:
-                streak.current_streak = 1  # Reset if missed yesterday
-
-            streak.last_streak_date = today
-            if streak.current_streak > streak.longest_streak:
-                streak.longest_streak = streak.current_streak
-            streak.save()
+        streak.longest_streak = max(streak.longest_streak, streak.current_streak)
+        streak.last_streak_date = today
+        streak.save()

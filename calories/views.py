@@ -1,6 +1,6 @@
 from datetime import date
 from accounts.choices import Section
-from calories.services.tasks import CalorieAIAssistant
+from calories.services.tasks import CalorieAIAssistant, update_user_calorie_streak
 from common.responses import CustomErrorResponse, CustomSuccessResponse
 from django.utils import timezone
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -299,7 +299,7 @@ class CalorieViewSet(viewsets.ModelViewSet):
                     **nutrition
                 }
             )
-
+            transaction.on_commit(lambda: update_user_calorie_streak.delay(user.id))
             return CustomSuccessResponse(message="Meal logged successfully!", status=200)
         
     @action(
@@ -389,7 +389,7 @@ class CalorieViewSet(viewsets.ModelViewSet):
                     **validated_data,
                 }
             )
-
+            transaction.on_commit(lambda: update_user_calorie_streak.delay(user.id))
             return CustomSuccessResponse(message="Workout logged successfully!", status=200)
         
     @action(
@@ -1012,3 +1012,12 @@ class CalorieViewSet(viewsets.ModelViewSet):
                 "net_calories": total_logged_meal_calories - total_logged_burn
             }
         )
+        
+    @action(detail=False, methods=["get"], url_path="user_calorie_streak")
+    def user_calorie_streak(self, request):
+        streak, _ = UserCalorieStreak.objects.get_or_create(user=request.user)
+        return CustomSuccessResponse(data={
+            "current_streak": streak.current_streak,
+            "longest_streak": streak.longest_streak,
+            "last_active": streak.last_streak_date
+        })

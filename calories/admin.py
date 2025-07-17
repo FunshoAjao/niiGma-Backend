@@ -4,7 +4,8 @@ from .models import (
     SuggestedMeal,
     SuggestedWorkout,
     LoggedMeal,
-    LoggedWorkout
+    LoggedWorkout,
+    UserCalorieStreak
 )
 
 
@@ -26,6 +27,12 @@ class CalorieQAAdmin(admin.ModelAdmin):
     search_fields = ("user__email", "user__username", "goal")
     list_filter = ("reminder", "activity_level", "weight_unit", "allow_smart_food_suggestions")
     inlines = [SuggestedMealInline, SuggestedWorkoutInline]
+    
+@admin.register(UserCalorieStreak)
+class UserCalorieStreakAAdmin(admin.ModelAdmin):
+    list_display = ("user", "current_streak", "longest_streak", "last_streak_date")
+    search_fields = ("user__email", "current_streak", "last_streak_date")
+    list_filter = ("user", "current_streak", "longest_streak", "last_streak_date")
 
 
 @admin.register(SuggestedMeal)
