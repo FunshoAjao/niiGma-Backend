@@ -6,6 +6,7 @@ from django.utils.timezone import now
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from django.utils import timezone
 from accounts.models import User
+from datetime import timedelta, datetime
 from rest_framework.exceptions import NotFound
 from ovulations.services.tasks import calculate_cycle_state
 from ovulations.services.utils import get_next_phase, get_phase_guidance, parse_fuzzy_date
@@ -25,7 +26,7 @@ class CycleSetupViewSet(viewsets.ModelViewSet):
         user = request.user
 
         # Check if a setup already exists for this user
-        if CycleSetup.objects.filter(user=user).exists():
+        if CycleSetup.objects.filter(user=user, setup_complete=True).exists():
             return CustomErrorResponse(message="You already have a cycle setup.")
 
         data = request.data.copy()
@@ -41,6 +42,23 @@ class CycleSetupViewSet(viewsets.ModelViewSet):
         serializer.save(user=user, setup_complete=setup_complete)
         user.is_ovulation_tracker_setup = True
         user.save()
+        
+        if data.get("first_period_date") and data.get("period_length") and data.get("cycle_length"):
+               start_date_str = data.get("first_period_date")  # e.g., "2025-06-20"
+               start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
+
+               cycle_length = int(data.get("cycle_length"))
+               end_date = start_date + timedelta(days=cycle_length - 1)
+
+               OvulationCycle.objects.create(
+                    user=user,
+                    start_date=start_date,
+                    end_date=end_date,
+                    cycle_length=data.get("cycle_length"),
+                    period_length=data.get("period_length"),
+                    is_predicted=False
+                )
+               calculate_cycle_state.delay(user.id, timezone.now().date())
         return CustomSuccessResponse(data=serializer.data, message="cycle set up created successfully!")
     
     def update(self, request, *args, **kwargs):
