@@ -22,7 +22,25 @@ class CycleSetupViewSet(viewsets.ModelViewSet):
         return self.queryset.filter(user=self.request.user)
 
     def create(self, request, *args, **kwargs):
-        raise NotFound()
+        user = request.user
+
+        # Check if a setup already exists for this user
+        if CycleSetup.objects.filter(user=user).exists():
+            return CustomErrorResponse(message="You already have a cycle setup.")
+
+        data = request.data.copy()
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+
+        setup_complete = all([
+            data.get("first_period_date"),
+            data.get("period_length"),
+            data.get("cycle_length")
+        ])
+        serializer.save(user=user, setup_complete=setup_complete)
+
+        return CustomSuccessResponse(data=serializer.data, message="cycle set up created successfully!")
     
     def update(self, request, *args, **kwargs):
         raise NotFound()
@@ -255,8 +273,8 @@ class CycleSetupViewSet(viewsets.ModelViewSet):
                 if not answer.isdigit():
                     return CustomErrorResponse(message="Please provide a numeric value.")
                 record.cycle_length = int(answer)
-            elif step == "is_regular":
-                record.is_regular = str(answer).lower() == "regular"
+            elif step == "regularity":
+                record.regularity = str(answer).lower() == "regular"
 
             record.save()
             

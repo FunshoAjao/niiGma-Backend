@@ -4,6 +4,7 @@ from datetime import date
 from accounts.models import User
 from datetime import date as dt, timedelta
 from core.celery import app as celery_app
+from ovulations.choices import PeriodRegularity
 from utils.helpers.ai_service import OpenAIClient
 from ..models import CycleInsight, CycleSetup, OvulationCycle, CyclePhaseType, CycleState
 from django.db.models import Q
@@ -99,7 +100,7 @@ class OvulationAIAssistant:
 def calculate_cycle_state(user_id, date: dt):
     try:
         user = User.objects.get(id=user_id)
-        setup = CycleSetup.objects.only('cycle_length', 'period_length', 'is_regular').get(user=user)
+        setup = CycleSetup.objects.only('cycle_length', 'period_length', 'regularity').get(user=user)
     except CycleSetup.DoesNotExist:
         return None  
 
@@ -151,7 +152,7 @@ def calculate_cycle_state(user_id, date: dt):
             "days_to_next_phase": days_to_next,
             "average_cycle_length": setup.cycle_length or 28,
             "average_period_length": setup.period_length or 5,
-            "regularity": "Regular" if setup.is_regular else "Irregular",
+            "regularity": setup.regularity
         }
     )
     

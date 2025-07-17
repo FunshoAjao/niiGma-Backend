@@ -4,15 +4,20 @@ from common.models import BaseModel
 from ovulations.choices import CyclePhaseType
 from datetime import timedelta
 
-from .choices import InsightType
+from .choices import InsightType, PeriodRegularity
 
 class CycleSetup(BaseModel):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="cycle_setup_records")
     first_period_date = models.DateField(blank=True, null=True)
     period_length = models.PositiveIntegerField(blank=True, null=True)
     cycle_length = models.PositiveIntegerField(blank=True, null=True)
-    is_regular = models.BooleanField(default=True)
+    regularity = models.CharField(
+        max_length=20,
+        choices=PeriodRegularity.choices,
+        default=PeriodRegularity.REGULAR,
+    )
     setup_complete = models.BooleanField(default=False)
+    current_focus = models.TextField(blank=True, null=True)
 
     def __str__(self):
         return f"Ovulation Profile for {self.user.email}"

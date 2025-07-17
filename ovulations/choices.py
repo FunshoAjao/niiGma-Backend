@@ -10,3 +10,8 @@ class InsightType(models.TextChoices):
     CYCLE = "CYCLE", "Cycle Insight"
     AFFIRMATION = "AFFIRMATION", "Affirmation"
     TIP = "TIP", "Health Tip"
+    
+class PeriodRegularity(models.TextChoices):
+    REGULAR = "regular", "Regular"
+    IRREGULAR = "irregular", "Irregular"
+    PREFER_NOT_TO_SAY = "prefer_not_to_say", "Prefer not to say"
