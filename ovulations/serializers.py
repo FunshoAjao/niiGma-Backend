@@ -18,6 +18,7 @@ class CycleSetupSerializer(serializers.ModelSerializer):
             "cycle_length",
             "period_length",
             "first_period_date",
+            "current_focus",
             "regularity",
             "created_at",
             "updated_at"

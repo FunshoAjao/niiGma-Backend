@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from django.db import models
-from .models import CalorieQA, LoggedMeal, LoggedWorkout, SuggestedMeal, SuggestedWorkout
+from .models import CalorieQA, LoggedMeal, LoggedWorkout, SuggestedMeal, SuggestedWorkout, UserCalorieStreak
 
 class MealSource(models.TextChoices):
     Barcode = "barcode", "Barcode"
@@ -123,3 +123,8 @@ class SampleLoggedMealSerializer(serializers.Serializer):
             )
 
         return data
+    
+class CalorieStreakSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserCalorieStreak
+        fields = ['current_streak', 'longest_streak', 'last_streak_date']

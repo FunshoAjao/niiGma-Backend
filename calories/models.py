@@ -26,6 +26,16 @@ MEASUREMENT_UNITS = [
     ("slice", "Slice"),
 ]
 
+class UserCalorieStreak(BaseModel):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="calorie_streak")
+    current_streak = models.IntegerField(default=0)
+    longest_streak = models.IntegerField(default=0)
+    last_streak_date = models.DateField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.user} - Current: {self.current_streak}, Longest: {self.longest_streak}"
+
+
 class CalorieQA(BaseModel):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="calorie_qa")
     goal = models.CharField(max_length=100)  # body goals

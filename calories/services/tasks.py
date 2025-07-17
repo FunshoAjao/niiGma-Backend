@@ -13,9 +13,10 @@ from calories.serializers import LoggedMealSerializer, MealSource
 from utils.helpers.ai_service import OpenAIClient
 from accounts.models import PromptHistory
 import requests
-from ..models import MEAL_TYPES, CalorieQA, LoggedMeal, SuggestedMeal, SuggestedWorkout
+from ..models import MEAL_TYPES, CalorieQA, LoggedMeal, SuggestedMeal, SuggestedWorkout, UserCalorieStreak
 from rest_framework import serializers
 from datetime import timedelta
+from django.utils import timezone
 from django.utils.timezone import now
 from datetime import date
 from django.db.models import Sum
@@ -840,3 +841,30 @@ class CalorieAIAssistant:
                 code=500
             )
 
+    def update_calorie_streak(self):
+        user = self.user
+        today = timezone.now().date()
+        yesterday = today - timedelta(days=1)
+
+        streak, _ = UserCalorieStreak.objects.get_or_create(user=user)
+        calorie_qa = getattr(user, "calorie_qa", None)
+        if not calorie_qa:
+            return
+
+        daily_target = calorie_qa.daily_calorie_target
+        lower_bound = daily_target * 0.9
+        upper_bound = daily_target * 1.1
+
+        logs = LoggedMeal.objects.filter(user=user, date__date=today)
+        total = sum(log.calories for log in logs)
+
+        if lower_bound <= total <= upper_bound:
+            if streak.last_streak_date == yesterday:
+                streak.current_streak += 1
+            else:
+                streak.current_streak = 1  # Reset if missed yesterday
+
+            streak.last_streak_date = today
+            if streak.current_streak > streak.longest_streak:
+                streak.longest_streak = streak.current_streak
+            streak.save()
