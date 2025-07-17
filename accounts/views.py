@@ -338,8 +338,8 @@ class UserViewSet(viewsets.ModelViewSet):
                     "is_trivia_setup":user.is_trivia_setup,
                     "onboarding_completed_at": user.onboarding_completed_at.isoformat() if user.onboarding_completed_at else None,
                     "calories_profile": CalorieSerializer(user.calorie_qa).data if hasattr(user, 'calorie_qa') else None,
-                    "user_current_calorie_streak": user.calorie_streak.current_streak if hasattr(user, "calorie_streak") else None,
-                    "user_longest_calorie_streak": user.calorie_streak.longest_streak if hasattr(user, "calorie_streak") else None,
+                    "user_current_calorie_streak": user.calorie_streak.current_streak if hasattr(user, "calorie_streak") else 0,
+                    "user_longest_calorie_streak": user.calorie_streak.longest_streak if hasattr(user, "calorie_streak") else 0,
                 })
         except Exception as e:
             return CustomErrorResponse(message="Failed to retrieve user information", status=500)
