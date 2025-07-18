@@ -46,6 +46,7 @@ class OvulationLog(BaseModel):
     flow = models.CharField(max_length=50)
     symptoms = models.JSONField(default=list, blank=True)  
     mood = models.CharField(max_length=50, blank=True, null=True)
+    sex_purpose = models.CharField(max_length=50, blank=True, null=True)
     notes = models.TextField(blank=True)
     discharge = models.CharField(max_length=50, blank=True, null=True)
     sexual_activity = models.CharField(max_length=50, blank=True, null=True)

@@ -5,7 +5,7 @@ class OvulationLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = OvulationLog
         fields = [
-            "id", "date", "flow", "symptoms", "mood", 
+            "id", "date", "flow", "symptoms", "mood", "sex_purpose",
             "notes", "discharge", "sexual_activity"
         ]
 
