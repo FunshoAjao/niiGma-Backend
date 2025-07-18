@@ -66,6 +66,7 @@ class CycleState(BaseModel):
 
     class Meta:
         unique_together = ["user", "date"]
+        ordering = ['-created_at'] 
         
     def __str__(self):
         return f"Cycle State for {self.user.email} on {self.date.isoformat()}"
