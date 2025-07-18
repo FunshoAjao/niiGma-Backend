@@ -49,9 +49,6 @@ class OvulationLog(BaseModel):
     notes = models.TextField(blank=True)
     discharge = models.CharField(max_length=50, blank=True, null=True)
     sexual_activity = models.CharField(max_length=50, blank=True, null=True)
-
-    class Meta:
-        unique_together = ["user", "date"]
         
     def __str__(self):
         return f"Log for {self.user.email} on {self.date.isoformat()}"
