@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import SymptomSession, SymptomLocation, Symptom, SymptomAnalysis
+from .models import FeverTriggers, SensationDescription, SymptomSession, SymptomLocation, Symptom, SymptomAnalysis
 
 class SymptomSerializer(serializers.ModelSerializer):
     symptom_names = serializers.ListField(
@@ -45,3 +45,13 @@ class BodyPartsSerializer(serializers.Serializer):
     
 class BodyPartSerializer(serializers.Serializer):
     body_part = serializers.CharField(required=True)
+    
+class SensationDescriptionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SensationDescription
+        fields = "__all__"
+
+class FeverTriggersSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FeverTriggers
+        fields = "__all__"

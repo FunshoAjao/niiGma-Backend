@@ -4,16 +4,107 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
 from common.responses import CustomErrorResponse, CustomSuccessResponse
 from symptoms.services.tasks import SymptomPromptBuilder, generate_and_save_analysis
-from .models import SymptomSession, SymptomLocation, Symptom, SymptomAnalysis
+from .models import FeverTriggers, SensationDescription, SymptomSession, SymptomLocation, Symptom, SymptomAnalysis
 from .serializers import (
     BodyPartSerializer,
     BodyPartsSerializer,
+    FeverTriggersSerializer,
+    SensationDescriptionSerializer,
     SymptomSessionSerializer, 
     SymptomLocationSerializer, 
     SymptomSerializer, 
     SymptomAnalysisSerializer
 )
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from django.db import transaction
+
+class SensationDescriptionViewSet(viewsets.ModelViewSet):
+    queryset = SensationDescription.objects.all()
+    serializer_class = SensationDescriptionSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
+    
+    def get_paginated_response(self, data):
+        return Response({
+            'status': 'success',
+            'message': '',
+            'data': {
+                'count': self.paginator.page.paginator.count,
+                'next': self.paginator.get_next_link(),
+                'previous': self.paginator.get_previous_link(),
+                'results': data
+            }
+        })
+
+    def get_paginated_response_for_none_records(self, data):
+        return Response({
+            'status': 'success',
+            'message': 'No record found.',
+            'data': {
+                'count': 0,
+                'next': None,
+                'previous': None,
+                'results': data
+            }
+        })
+    
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return self.get_paginated_response_for_none_records(data=serializer.data)
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return CustomSuccessResponse(data=serializer.data, message="Sensation description retrieved")
+
+class FeverTriggersViewSet(viewsets.ModelViewSet):
+    queryset = FeverTriggers.objects.all()
+    serializer_class = FeverTriggersSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
+    
+    def get_paginated_response(self, data):
+        return Response({
+            'status': 'success',
+            'message': '',
+            'data': {
+                'count': self.paginator.page.paginator.count,
+                'next': self.paginator.get_next_link(),
+                'previous': self.paginator.get_previous_link(),
+                'results': data
+            }
+        })
+
+    def get_paginated_response_for_none_records(self, data):
+        return Response({
+            'status': 'success',
+            'message': 'No record found.',
+            'data': {
+                'count': 0,
+                'next': None,
+                'previous': None,
+                'results': data
+            }
+        })
+    
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return self.get_paginated_response_for_none_records(data=serializer.data)
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return CustomSuccessResponse(data=serializer.data, message="Fever trigger retrieved")
 
 class SymptomSessionViewSet(viewsets.ModelViewSet):
     queryset = SymptomSession.objects.all()

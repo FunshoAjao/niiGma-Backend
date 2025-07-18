@@ -38,3 +38,15 @@ class SymptomAnalysis(BaseModel):
 
     def __str__(self):
         return f"Analysis for {self.session.user.full_name}"
+    
+class SensationDescription(models.Model):
+    description = models.CharField(max_length=100)
+    
+    def __str__(self):
+        return self.description
+
+class FeverTriggers(models.Model):
+    name = models.CharField(max_length=100) 
+    
+    def __str__(self):
+        return self.name

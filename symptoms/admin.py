@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import SymptomSession, SymptomLocation, Symptom, SymptomAnalysis
+from .models import FeverTriggers, SensationDescription, SymptomSession, SymptomLocation, Symptom, SymptomAnalysis
 
 
 @admin.register(SymptomSession)
@@ -35,3 +35,14 @@ class SymptomAnalysisAdmin(admin.ModelAdmin):
     list_display = ('id', 'session', 'created_at')
     search_fields = ('session__user__username',)
     ordering = ('-created_at',)
+
+@admin.register(SensationDescription)
+class SensationDescriptionAdmin(admin.ModelAdmin):
+    list_display = ("id", "description")
+    search_fields = ("description",)
+
+
+@admin.register(FeverTriggers)
+class FeverTriggersAdmin(admin.ModelAdmin):
+    list_display = ("id", "name")
+    search_fields = ("name",)
