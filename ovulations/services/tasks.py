@@ -220,17 +220,16 @@ def calculate_cycle_state(user_id, target_date: dt):
     OvulationAIAssistant(user, state).generate_cycle_insight()
     logger.info(f"Cycle state updated for {user.email} on {target_date.isoformat()}: {state.phase} (Day {day_in_cycle})")
 
+            
+from datetime import date
 
 @shared_task
 def update_all_cycle_states():
     users = User.objects.filter(is_active=True, cycle_setup_records__setup_complete=True)
     for user in users:
         try:
-            today = date.today()
-            # For past 7 days and next 7 days
-            for offset in range(-7, 8):  # -7 to +7 inclusive, total 15 days
-                target_date = today + timedelta(days=offset)
-                calculate_cycle_state.delay(user.id, target_date)
-            logger.info(f"Queued cycle state tasks for user {user.email} for +/- 7 days")
+            calculate_cycle_state.delay(user.id, date.today())  # Use .delay() to queue the task
+            logger.info(f"Queued cycle state task for {user.email}")
         except Exception as e:
-            logger.error(f"Error queuing tasks for {user.email}: {e}")
+            logger.error(f"Error queuing task for {user.email}: {e}")
+

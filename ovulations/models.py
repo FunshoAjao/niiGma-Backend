@@ -4,7 +4,7 @@ from common.models import BaseModel
 from ovulations.choices import CyclePhaseType
 from datetime import timedelta
 
-from .choices import InsightType, PeriodRegularity
+from .choices import ConfidenceType, InsightType, PeriodRegularity
 
 class CycleSetup(BaseModel):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="cycle_setup_records")
@@ -75,7 +75,11 @@ class CycleInsight(BaseModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     date = models.DateField()
     phase = models.CharField(max_length=20, choices=CyclePhaseType)
-    confidence = models.CharField(max_length=20)
+    confidence = models.CharField(
+        max_length=10,
+        choices=ConfidenceType.choices,
+        default=ConfidenceType.MID,
+    )
     headline = models.CharField(max_length=200)
     detail = models.TextField()
     insight_type = models.CharField(max_length=20, choices=InsightType, default="CYCLE")

@@ -184,7 +184,8 @@ class CycleSetupViewSet(viewsets.ModelViewSet):
         
         state = CycleState.objects.filter(user=user, date=selected_date).order_by("-date").first()
         if not state:
-            return CustomErrorResponse(message="Cycle state not found for today.", status=404)
+            calculate_cycle_state.delay(user.id, selected_date)
+            return CustomErrorResponse(message="Cycle state is being calculated. Please try again shortly.", status=202)
         insights = CycleInsight.objects.filter(user=user, date=state.date)
         data = {
             "day_in_cycle": state.day_in_cycle,
