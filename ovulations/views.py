@@ -8,7 +8,7 @@ from django.utils import timezone
 from accounts.models import User
 from datetime import timedelta, datetime
 from rest_framework.exceptions import NotFound
-from ovulations.services.tasks import calculate_cycle_state
+from ovulations.services.tasks import calculate_cycle_state, predict_cycle_state
 from ovulations.services.utils import get_next_phase, get_phase_guidance, parse_fuzzy_date
 from .models import CycleInsight, CycleSetup, CycleState, OvulationCycle, OvulationLog
 from .serializers import CycleInsightSerializer, CycleOnboardingSetUpSerializer, CycleSetupSerializer, InsightBlockSerializer, OvulationLogSerializer
@@ -58,7 +58,7 @@ class CycleSetupViewSet(viewsets.ModelViewSet):
                     period_length=data.get("period_length"),
                     is_predicted=False
                 )
-               calculate_cycle_state.delay(user.id, timezone.now().date())
+               calculate_cycle_state.delay(user.id, start_date)
         return CustomSuccessResponse(data=serializer.data, message="cycle set up created successfully!")
     
     def update(self, request, *args, **kwargs):
@@ -77,14 +77,15 @@ class CycleSetupViewSet(viewsets.ModelViewSet):
         if not serializer.is_valid():
             return CustomErrorResponse(message=serializer.errors, status=400)
 
-        serializer.save(user=request.user)
-        calculate_cycle_state.delay(request.user.id, timezone.now().date())
+        log = serializer.save(user=request.user)
+        calculate_cycle_state.delay(request.user.id, log.date)
         return CustomSuccessResponse(message="Log entry created successfully.", data=serializer.data)
     
-    @action(detail=False,
-            methods=["put"],
-            url_path="update_log_entry/(?P<log_id>[^/.]+)",
-            serializer_class=OvulationLogSerializer
+    @action(
+        detail=False,
+        methods=["put"],
+        url_path="update_log_entry/(?P<log_id>[^/.]+)",
+        serializer_class=OvulationLogSerializer
     )
     def update_log_entry(self, request, log_id=None):
         """
@@ -102,9 +103,12 @@ class CycleSetupViewSet(viewsets.ModelViewSet):
         if not serializer.is_valid():
             return CustomErrorResponse(message=serializer.errors, status=400)
 
-        serializer.save()
-        calculate_cycle_state.delay(request.user.id, timezone.now().date())
+        updated_log = serializer.save()
+        
+        calculate_cycle_state.delay(request.user.id, updated_log.date)  # ✅ Use updated date
+
         return CustomSuccessResponse(message="Log entry updated successfully.", data=serializer.data)
+
     
     @action(detail=False,
             methods=["get"],
@@ -145,6 +149,7 @@ class CycleSetupViewSet(viewsets.ModelViewSet):
         
         return CustomSuccessResponse(data=logs)
     
+    
     @extend_schema(
         parameters=[
             OpenApiParameter(
@@ -172,7 +177,10 @@ class CycleSetupViewSet(viewsets.ModelViewSet):
         user = request.user
         today = timezone.now().date()
         if selected_date > today:
-            return CustomErrorResponse(message="Cannot fetch future cycle state.", status=400)
+            data = predict_cycle_state(user, selected_date)
+            if not data:
+                return CustomErrorResponse(message="Prediction unavailable", status=404)
+            return CustomSuccessResponse(data=data)
         
         state = CycleState.objects.filter(user=user, date=selected_date).order_by("-date").first()
         if not state:
