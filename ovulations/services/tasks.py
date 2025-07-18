@@ -146,6 +146,7 @@ def predict_cycle_state(user, target_date: dt):
         "days_to_next_phase": days_to_next,
         "next_phase": get_next_phase(phase),
         "phase_summary": get_phase_guidance().get(str(phase).capitalize(), {}),
+        "is_predicted": True,
         "cycle_stats": {
             "average_cycle_length": setup.cycle_length or 28,
             "average_period_length": setup.period_length or 5,
@@ -155,29 +156,21 @@ def predict_cycle_state(user, target_date: dt):
         "insights": []  # You may not generate insights for future predictions
     }
 
-@celery_app.task(name="calculate_cycle_state")
+@shared_task(name="calculate_cycle_state")
 def calculate_cycle_state(user_id, target_date: dt):
     try:
         user = User.objects.get(id=user_id)
         setup = CycleSetup.objects.only('cycle_length', 'period_length', 'regularity').get(user=user)
     except CycleSetup.DoesNotExist:
-        logger.info("User does not exist!")
-        return None  
+        return None
 
-    cycle = OvulationCycle.objects.filter(
-        user=user,
-        start_date__lte=target_date,
-        end_date__gte=target_date
-    ).first()
-
+    cycle = get_or_create_cycle_for_date(user, target_date)
     if not cycle:
         logger.info(f"Cycle does not exist for this user {user.email}")
-        return None  
+        return None 
 
-    # Calculate day in cycle
-    day_in_cycle = (target_date - cycle.start_date).days + 1  # 1-based
+    day_in_cycle = (target_date - cycle.start_date).days + 1
 
-    # Determine phase (approximate based on lengths)
     menstrual_end = cycle.start_date + timedelta(days=setup.period_length or 5)
     ovulation_start = cycle.end_date - timedelta(days=(setup.period_length or 5) + 14)
     ovulation_end = ovulation_start + timedelta(days=2)
@@ -191,19 +184,17 @@ def calculate_cycle_state(user_id, target_date: dt):
     else:
         phase = CyclePhaseType.LUTEAL
 
-    def phase_switch_dates():
-        return {
-            CyclePhaseType.MENSTRUAL: menstrual_end,
-            CyclePhaseType.FOLLICULAR: ovulation_start,
-            CyclePhaseType.OVULATION: ovulation_end,
-            CyclePhaseType.LUTEAL: cycle.end_date
-        }
+    switch_dates = {
+        CyclePhaseType.MENSTRUAL: menstrual_end,
+        CyclePhaseType.FOLLICULAR: ovulation_start,
+        CyclePhaseType.OVULATION: ovulation_end,
+        CyclePhaseType.LUTEAL: cycle.end_date
+    }
 
-    switch_dates = phase_switch_dates()
     next_phase_date = switch_dates.get(phase, cycle.end_date)
     days_to_next = max(0, (next_phase_date - target_date).days)
 
-    # Create or update CycleState
+    # Save or update cycle state
     state, _ = CycleState.objects.update_or_create(
         user=user,
         date=target_date,
@@ -216,11 +207,55 @@ def calculate_cycle_state(user_id, target_date: dt):
             "regularity": setup.regularity
         }
     )
-    
+
     OvulationAIAssistant(user, state).generate_cycle_insight()
     logger.info(f"Cycle state updated for {user.email} on {target_date.isoformat()}: {state.phase} (Day {day_in_cycle})")
 
-            
+from datetime import timedelta
+
+def get_or_create_cycle_for_date(user, target_date):
+    """
+    Returns an existing OvulationCycle that covers `target_date`,
+    or creates it on the fly based on the user's setup.
+    """
+    setup = CycleSetup.objects.filter(user=user).first()
+    if not setup:
+        return None
+
+    # 1. Check for existing cycle
+    cycle = OvulationCycle.objects.filter(
+        user=user,
+        start_date__lte=target_date,
+        end_date__gte=target_date
+    ).first()
+
+    if cycle:
+        return cycle
+
+    # 2. No cycle found — create one dynamically
+    last_cycle = OvulationCycle.objects.filter(user=user).order_by("-start_date").first()
+
+    if last_cycle:
+        next_start = last_cycle.end_date + timedelta(days=1)
+    else:
+        next_start = setup.first_period_date or target_date
+
+    # Keep generating future cycles until we cover target_date
+    while True:
+        next_end = next_start + timedelta(days=(setup.cycle_length or 28) - 1)
+        if next_start <= target_date <= next_end:
+            return OvulationCycle.objects.create(
+                user=user,
+                start_date=next_start,
+                end_date=next_end,
+                cycle_length=setup.cycle_length or 28,
+                period_length=setup.period_length or 5,
+                is_predicted=True
+            )
+        next_start = next_end + timedelta(days=1)
+
+
+        
 from datetime import date
 
 @shared_task
