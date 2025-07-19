@@ -188,24 +188,73 @@ class CalorieAIAssistant:
         return response
 
             
-    def get_user_prompt(self, user_input: str) -> str:
+    def get_user_prompt_with_previous_conversation(self, user_input: str, chat_history: str = "") -> str:
+        user = self.user
+        calorie_qa = getattr(user, 'calorie_qa', None)
+
+        # Graceful fallbacks
+        activity_level = getattr(calorie_qa, 'activity_level', 'Not specified')
+        eating_style = getattr(calorie_qa, 'eating_style', 'Not specified')
+        goal_weight = getattr(calorie_qa, 'goal_weight', 'Unknown')
+        weight_unit = getattr(calorie_qa, 'weight_unit', 'kg')
+        goal_timeline = getattr(calorie_qa, 'goal_timeline', 'Not specified')
+
+        profile = f"""
+            📋 User Profile:
+            - Goal: {user.goals}
+            - Age: {user.age}
+            - Current Weight: {getattr(user, 'weight', 'Unknown')} kg
+            - Goal Weight: {goal_weight} {weight_unit}
+            - Height: {user.height} {user.height_unit}
+            - Wellness Status: {user.wellness_status}
+            - Country: {user.country}
+            - Goal Timeline: {goal_timeline}
+            - Eating Style: {eating_style}
+            - Activity Level: {activity_level}
+            - Dietary Preference: {getattr(user, 'diet_type', 'Not specified')}
+            - Health Conditions: {getattr(user, 'health_conditions', 'None')}
+            - Sleep or Stress Notes: {getattr(user, 'sleep_stress_notes', 'Not specified')}
+            """
+            
+        previous_chat = f"🧠 Previous Conversation:\n{chat_history.strip()}\n" if chat_history else ""
+        
+        # Build final prompt
         prompt = f"""
-        You are a helpful AI assistant specialized in fitness and health guidance. Use the following user profile to inform your response.
+            You are a compassionate, knowledgeable AI wellness coach helping users with fitness, nutrition, and healthy living.
 
-        User Profile:
-        - Goal: {self.user.goals}
-        - Current Weight: {getattr(self.user, 'weight', 'Unknown')} kg
-        - Height: {self.user.height} {self.user.height_unit}
-        - Wellness Status: {self.user.wellness_status}
-        - Country: {self.user.country}
-        - Age: {self.user.age}
+            {profile}
 
-        The user says:
-        "{user_input}"
+            
+            {previous_chat}             
 
-        Based on this profile and their message, provide a thoughtful, supportive, and practical response.
-        """
-        return prompt
+            🗣 User: {user_input}
+
+            🎯 Your Task:
+            Respond as a supportive coach who understands both physical and mental health. Your answer should:
+            - Be personalized and grounded in their profile
+            - Offer encouragement and actionable tips
+            - Be friendly, positive, and non-judgmental
+            - Address both lifestyle and mindset when appropriate
+
+            Respond with just your message to the user. Avoid any markdown or system notes.
+            """
+        return prompt.strip()
+
+    
+    def get_conversation_context(self, conversation_id, max_turns=2):
+        history = PromptHistory.objects.filter(
+            user=self.user,
+            conversation_id=conversation_id
+        ).order_by('-created_at')[:max_turns]  # most recent messages
+
+        # Reverse to get chronological order
+        history = reversed(history)
+
+        formatted = ""
+        for entry in history:
+            formatted += f"User: {entry.prompt}\nAI: {entry.response}\n"
+        return formatted.strip()
+
     
     def get_user_prompt(self, user_input: str) -> str:
         user = self.user
@@ -255,7 +304,12 @@ class CalorieAIAssistant:
     def chat_with_ai(self, user_context, conversation_id: uuid4, base_64_image=None, text=""):
         if base_64_image:
             return self.chat_with_ai_with_base64(user_context, base_64_image, text)
-        prompt = self.get_user_prompt(user_context)
+        
+        # Build conversation context if it exists
+        chat_history = self.get_conversation_context(conversation_id) if conversation_id else ""
+
+        # Compose full prompt with profile + history
+        prompt = self.get_user_prompt_with_previous_conversation(user_context, chat_history)
         # Call OpenAI here and parse the JSON result
         response = OpenAIClient.generate_response(prompt)
         if not response:
