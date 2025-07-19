@@ -106,7 +106,7 @@ class Reminder:
                 else:
                     target = user.calorie_qa.daily_calorie_target
                     if average < target:
-                        insight = f"Great job! You stayed under your target. Avg: {round(average)} cal/day (target: {target})."
+                        insight = f"Great job! You stayed under your target this week. Avg: {round(average)} cal/day (target: {target})."
                     else:
                         insight = f"You went over your target this week. Avg: {round(average)} cal/day (target: {target}). Let's improve next week!"
         
