@@ -6,11 +6,15 @@ class SymptomSerializer(serializers.ModelSerializer):
         child=serializers.CharField(),
         allow_empty=False
     )
+    body_areas = serializers.ListField(
+        child=serializers.CharField(),
+        allow_empty=False
+    )
 
     class Meta:
         model = Symptom
         fields = [
-            'id', 'location', 'symptom_names', 'description',
+            'id', 'body_areas', 'symptom_names', 'description', 'session',
             'started_on', 'severity', 'sensation', 'worsens_with', 'notes', 'created_at'
         ]
         read_only_fields = ['created_at']
@@ -26,11 +30,11 @@ class SymptomLocationSerializer(serializers.ModelSerializer):
 
 
 class SymptomSessionSerializer(serializers.ModelSerializer):
-    locations = SymptomLocationSerializer(many=True, read_only=True)
+    symptoms = SymptomSerializer(many=True, read_only=True)
 
     class Meta:
         model = SymptomSession
-        fields = ['id', 'user', 'biological_sex', 'age', 'locations', 'created_at']
+        fields = ['id', 'user', 'biological_sex', 'age', 'symptoms', 'created_at']
         read_only_fields = ['user', 'created_at']
 
 

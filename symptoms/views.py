@@ -419,7 +419,7 @@ class SymptomAnalysisView(viewsets.ModelViewSet):
             symptom_id = kwargs['id']
             symptom = None
             try:
-                symptom = Symptom.objects.select_related("location__session").get(id=symptom_id)
+                symptom = Symptom.objects.select_related("session").get(id=symptom_id)
             except Symptom.DoesNotExist:
                 return CustomErrorResponse(message="No symptom recorded yet!")
             builder = SymptomPromptBuilder(request.user, symptom)
@@ -437,8 +437,7 @@ class SymptomAnalysisView(viewsets.ModelViewSet):
         """
         Return a summary of all symptom sessions for the user.
         """
-        sessions = SymptomSession.objects.prefetch_related("locations__symptoms", "analysis").filter(user=request.user)
-        timeline = []
+        sessions = SymptomSession.objects.prefetch_related("symptoms", "analysis").filter(user=request.user)
 
         timeline = [
             {
@@ -449,8 +448,7 @@ class SymptomAnalysisView(viewsets.ModelViewSet):
                 "symptom_id": symptom.id,
             }
             for session in sessions
-            for location in session.locations.all()
-            for symptom in location.symptoms.all()
+            for symptom in session.symptoms.all()
         ]
 
         return CustomSuccessResponse(data=timeline)
@@ -466,13 +464,13 @@ class SymptomAnalysisView(viewsets.ModelViewSet):
         Return tracked details for a single symptom.
         """
         try:
-            symptom = Symptom.objects.select_related("location__session").get(id=symptom_id)
+            symptom = Symptom.objects.select_related("session").get(id=symptom_id)
         except Symptom.DoesNotExist:
             return CustomErrorResponse(message="Symptom not found!")
 
         return CustomSuccessResponse(data={
             "recorded_at": symptom.created_at.strftime("%Y-%m-%d %H:%M"),
-            "body_area": symptom.location.body_area,
+            "body_area": symptom.body_areas,
             "symptom_names": symptom.symptom_names,
         })
 
@@ -487,9 +485,11 @@ class SymptomAnalysisView(viewsets.ModelViewSet):
         Return detailed AI health report for a specific session.
         """
         try:
-            session = SymptomSession.objects.prefetch_related("locations__symptoms", "analysis").get(id=session_id, user=request.user)
+            session = SymptomSession.objects.prefetch_related("symptoms", "analysis").get(
+                id=session_id, user=request.user
+            )
             analysis = session.analysis
-            first_symptom = session.locations.first().symptoms.first()
+            first_symptom = session.symptoms.first()
         except (SymptomSession.DoesNotExist, AttributeError):
             return CustomErrorResponse(message="Report not found or incomplete.")
 
@@ -497,8 +497,8 @@ class SymptomAnalysisView(viewsets.ModelViewSet):
             "recorded_at": session.created_at.strftime("%Y-%m-%d %H:%M"),
             "age_sex": f"{session.age}yrs {session.biological_sex}",
             "conditions": [cause["name"] for cause in analysis.possible_causes],
-            "duration": "1 week",  # Optional: make dynamic if you wish
-            "area": first_symptom.location.body_area if first_symptom else "N/A",
+            "duration": "1 week",  # Optional: make dynamic later
+            "area": first_symptom.body_areas if first_symptom else "N/A",
             "full_details": {
                 "summary": f"Reported Symptoms: {', '.join(first_symptom.symptom_names)}" if first_symptom else "",
                 "causes": analysis.possible_causes,

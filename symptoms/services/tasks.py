@@ -12,27 +12,27 @@ logger = get_task_logger(__name__)
 @celery_app.task(name="generate_and_save_analysis")
 def generate_and_save_analysis(symptom_id):
     try:
-        symptom = Symptom.objects.select_related("location__session").get(id=symptom_id)
+        symptom = Symptom.objects.select_related("session").get(id=symptom_id)
     except Symptom.DoesNotExist:
         return
-    builder = SymptomPromptBuilder(user=symptom.location.session.user, symptom=symptom)
+    builder = SymptomPromptBuilder(user=symptom.session.user, symptom=symptom)
     analysis_text = builder.build_analysis_from_symptoms()  # returns formatted string
 
     analysis, created = SymptomAnalysis.objects.update_or_create(
-        session=symptom.location.session,
+        session=symptom.session,
         defaults={
             "possible_causes": analysis_text["causes"],
             "advice": analysis_text["advice"]
         }
     )
-    logger.info(f"Analysis {'created' if created else 'updated'} for session {symptom.location.session.id}")
+    logger.info(f"Analysis {'created' if created else 'updated'} for session {symptom.session.id}")
     return
 
 class SymptomPromptBuilder:
     def __init__(self, user, symptom: Symptom=None):
         self.user = user
         self.symptom = symptom
-        self.session = symptom.location.session if symptom is not None else None
+        self.session = symptom.session if symptom is not None else None
 
     def build_by_body_part(self, body_part):
         """
@@ -98,7 +98,7 @@ class SymptomPromptBuilder:
         """
         Generates analysis using the symptom object, its location, and its session.
         """
-        body_part = self.symptom.location.body_area
+        body_parts = self.symptom.body_areas
         symptom_names = self.symptom.symptom_names
         description = self.symptom.description
         started_on = self.symptom.started_on
@@ -136,7 +136,7 @@ class SymptomPromptBuilder:
 
             Here is the symptom report:
 
-            - Body Part: {body_part}
+            - Body Part: {body_parts}
             - Symptoms: {symptoms_formatted}
             - Description: {description}
             - Started On: {started_on}

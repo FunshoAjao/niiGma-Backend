@@ -20,8 +20,8 @@ class SymptomLocationAdmin(admin.ModelAdmin):
 
 @admin.register(Symptom)
 class SymptomAdmin(admin.ModelAdmin):
-    list_display = ('id', 'location', 'get_symptom_names', 'severity', 'started_on', 'created_at')
-    search_fields = ('location__body_area', 'symptom_names')
+    list_display = ('id', 'session', 'get_symptom_names', 'severity', 'started_on', 'created_at')
+    search_fields = ('body_areas', 'symptom_names')
     list_filter = ('severity', 'sensation', 'started_on')
     ordering = ('-created_at',)
 
