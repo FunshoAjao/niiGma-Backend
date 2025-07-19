@@ -24,7 +24,9 @@ class CycleSetup(BaseModel):
     
     @property
     def ovulation_day(self):
-        return self.created_at + timedelta(days=self.cycle_length // 2)
+        if self.first_period_date and self.cycle_length:
+            return self.first_period_date + timedelta(days=self.cycle_length // 2)
+        return None
 
 class OvulationCycle(BaseModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="ovulation_cycles")

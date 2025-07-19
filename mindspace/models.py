@@ -36,6 +36,17 @@ class MoodMirrorEntry(BaseModel):
     class Meta:
         ordering = ['-created_at']
         
+    @property
+    def last_3_moods(self):
+        return (
+            MoodMirrorEntry.objects
+            .filter(mind_space=self.mind_space)
+            .exclude(id=self.id)
+            .order_by('-date')[:3]
+            .values_list('mood', flat=True)
+        )
+        
+        
 class SoundscapeLibrary(models.Model):
     """
     This Library is exclusive for the admin

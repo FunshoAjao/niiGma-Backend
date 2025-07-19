@@ -30,6 +30,10 @@ app.conf.beat_schedule = {
         "task": "ovulations.services.tasks.update_all_cycle_states",
         "schedule": crontab(minute='*/50'),  # Runs every 50 minutes
     },
+    'reset-calorie-streaks-daily': {
+        'task': 'calories.services.tasks.reset_missed_calorie_streaks',
+        'schedule': crontab(hour=3, minute=0),  # Every day at 3:00 AM
+    },
     
     
     # for reminder

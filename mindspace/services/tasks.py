@@ -10,7 +10,7 @@ from django.utils import timezone
 from utils.models import  DailyWindDownQuote, UserAIInsight
 from ..models import *
 from rest_framework import serializers
-from datetime import timedelta
+from datetime import datetime, timedelta
 from django.utils.timezone import now
 from datetime import date
 from django.db.models import Sum
@@ -107,9 +107,28 @@ class MindSpaceAIAssistant:
         self.user = user
         self.mind_space_profile = mind_space_profile
         
+    def get_last_mood_for_user(self, profile:MindSpaceProfile):
+        try:
+            last_entry = (
+                MoodMirrorEntry.objects
+                .filter(mind_space=profile)
+                .order_by('-date')
+                .first()
+            )
+
+            if last_entry:
+                return last_entry.mood
+            return None
+
+        except MindSpaceProfile.DoesNotExist:
+            return None
+
+        
     def build_mood_prompt(self, mood, reflection):
         user = self.user
         mind_space_profile = self.mind_space_profile
+        current_time = datetime.now().strftime("%A, %B %d, %I:%M %p")
+        last_3_moods = self.get_last_mood_for_user(mind_space_profile)
         print("Building meal prompt...")
 
         prompt = f"""
@@ -118,8 +137,10 @@ class MindSpaceAIAssistant:
         A user has shared the following information:
         - Mood: "{mood}"
         - Reflection: "{reflection}"
-        - Mind Space Profile: {mind_space_profile.frequency_type}
-        frequency, goals: {mind_space_profile.goals}
+        - Mind Space Profile: {mind_space_profile.frequency_type} frequency
+        - Goals: {mind_space_profile.goals}
+        - Recent Moods: {last_3_moods}
+        - Date & Time: {current_time}
 
         Based on this input, generate a short, meaningful, and emotionally resonant title that captures the essence of their experience today.
 
@@ -174,11 +195,12 @@ class MindSpaceAIAssistant:
             A user has logged their mood and reflections over time:
             {mood_history}
 
-            Based on this data, generate {count} unique, helpful **insights**.
-            Each insight should be:
-            - Actionable (e.g., related to exercise, journaling, social activity)
-            - Personalized to their mood patterns
-            - Encouraging
+            Based on this, generate {count} personalized insights that:
+            - Reflect noticeable mood trends or emotional patterns
+            - Offer **gentle, actionable suggestions** (e.g., journaling, movement, setting boundaries, mindfulness)
+            - Are encouraging, non-judgmental, and supportive
+            - Are no longer than 1–2 short sentences each
+            - Avoid repeating themes or generic advice
 
             Keep each insight short (1-2 lines). Format them as a bullet list.
             Avoid repeating the same message.
@@ -234,12 +256,19 @@ class MindSpaceAIAssistant:
             
     def get_affirmation_prompt(self, user_mood: str):
         return f"""
-            Based on the fact that the user is feeling {user_mood} today, 
-            write a short, uplifting daily affirmation that helps them focus on positivity
-            and personal growth.
-            Make it encouraging and relevant to their current mood.
-            Respond ONLY with the affirmation as a plain string. Do not add quotes, explanations, or any extra text.
-            """
+        You are a compassionate and emotionally intelligent mental wellness assistant.
+
+        A user is currently feeling: **{user_mood}**
+
+        Write a short, heartfelt affirmation that:
+        - Gently acknowledges this emotional state
+        - Encourages hope, grounding, or strength — depending on the mood
+        - Sounds natural, sincere, and human (not robotic or generic)
+        - Is 1–2 sentences only
+
+        Respond ONLY with the affirmation as plain text. Do not include quotes, emojis, explanations, or any extra formatting.
+        """
+
             
     def generate_affirmation(self, user_mood: str):
         """
@@ -306,3 +335,4 @@ class MindSpaceAIAssistant:
         
 
         return response
+    

@@ -89,33 +89,32 @@ class TriviaAIAssistant:
         
     def generate_feature_trivia_prompt(self, user_first_name: str = "User", num_questions=3) -> str:
         return f"""
-        You are a smart health and wellness trivia assistant for a mobile app called Niigma.
+            You are a smart health and wellness trivia assistant for a mobile app called Niigma.
 
-        Generate a set of {num_questions} SEMI-HARD multiple choice trivia questions based on these 4 core feature domains:
+            Generate a set of {num_questions} SEMI-HARD multiple choice trivia questions based on these 4 core feature domains:
 
-        1. **Mindspace** – emotional and mental wellbeing, stress, anxiety, journaling, mindfulness.
-        2. **Calorie Coach** – food categories, calorie knowledge, healthy diet, macro/micro nutrients.
-        3. **Symptom Checker** – common symptoms, probable causes, basic health literacy.
-        4. **Ovulation Tracker** – fertility awareness, ovulation signs, hormonal cycle knowledge.
+            1. Mindspace – emotional and mental wellbeing, stress, anxiety, journaling, mindfulness.
+            2. Calorie Coach – food categories, calorie knowledge, healthy diet, macro/micro nutrients.
+            3. Symptom Checker – common symptoms, probable causes, basic health literacy.
+            4. Ovulation Tracker – fertility awareness, ovulation signs, hormonal cycle knowledge.
 
-        Your audience is mostly everyday users with interest in health — so questions should:
-        - Be **challenging but understandable** (don’t sound like textbook questions).
-        - Include 4 choices (A–D) and 1 correct answer.
-        - Include a **short explanation** after the correct answer for learning.
+            Your audience is mostly everyday users with an interest in health — so questions should:
+            - Be **challenging but understandable** (not textbook-style).
+            - Include **4 answer choices (A–D)**, with **1 correct answer**.
+            - Include a **short explanation** after the correct answer for learning.
 
-        Return the result as a valid Python list of dictionaries:
+            Return the result as a valid Python list of dictionaries — **no introductions, markdown, or explanations**. Just return a raw Python object like this:
 
-        ```python
-        [
-        {{
-            "question": "What hormone peaks during ovulation?",
-            "choices": ["Estrogen", "LH", "Progesterone", "FSH"],
-            "correct_choice": "B",
-            "explanation": "Luteinizing hormone (LH) surges before ovulation and triggers the release of the egg."
-        }},
-        ...
-        ]
-        Do not include introductions or markdown — only return the list object directly.
-        You’re generating this for {user_first_name}, a premium user.
+            # Example format (DO NOT reuse this question):
+            # [
+            #     {{
+            #         "question": "Your custom question here?",
+            #         "choices": ["Option A", "Option B", "Option C", "Option D"],
+            #         "correct_choice": "A",
+            #         "explanation": "Brief explanation here."
+            #     }},
+            #     ...
+            # ]
+
+            You’re generating this for {user_first_name}, a premium user.
         """
-            

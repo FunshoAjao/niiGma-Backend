@@ -20,8 +20,32 @@ from django.utils import timezone
 from django.utils.timezone import now
 from datetime import date
 from django.db.models import Sum
+from django.db.models import Q
 from celery import shared_task
 
+@shared_task
+def reset_missed_calorie_streaks():
+    """
+    Resets the calorie streaks for users who did NOT log calorie data yesterday
+    and haven't already logged today.
+    """
+    today = timezone.now().date()
+    yesterday = today - timedelta(days=1)
+
+    # Step 1: Get user IDs who logged calories yesterday
+    active_user_ids = set(
+        LoggedMeal.objects.filter(date=yesterday).values_list("user_id", flat=True)
+    )
+
+    # Step 2: Find streaks where user did NOT log yesterday AND hasn't already logged today
+    stale_streaks = UserCalorieStreak.objects.filter(
+        ~Q(user_id__in=active_user_ids),
+        ~Q(last_streak_date=today)
+    )
+
+    # Step 3: Update in bulk
+    updated = stale_streaks.update(current_streak=0)
+    logger.info(f"Reset {updated} calorie streak(s) due to inactivity on {yesterday}")
 
 @shared_task
 def update_user_calorie_streak(user_id):
@@ -32,7 +56,7 @@ def update_user_calorie_streak(user_id):
         return
 
 class CalorieAIAssistant:
-    def __init__(self, user, logged_meal : LoggedMealSerializer=None):
+    def __init__(self, user: User, logged_meal : LoggedMealSerializer=None):
         self.user = user
         self.logged_meal = logged_meal
 
@@ -182,6 +206,50 @@ class CalorieAIAssistant:
         Based on this profile and their message, provide a thoughtful, supportive, and practical response.
         """
         return prompt
+    
+    def get_user_prompt(self, user_input: str) -> str:
+        user = self.user
+        calorie_qa = getattr(user, 'calorie_qa', None)
+
+        # Graceful fallbacks
+        activity_level = getattr(calorie_qa, 'activity_level', 'Not specified')
+        eating_style = getattr(calorie_qa, 'eating_style', 'Not specified')
+        goal_weight = getattr(calorie_qa, 'goal_weight', 'Unknown')
+        weight_unit = getattr(calorie_qa, 'weight_unit', 'kg')
+        goal_timeline = getattr(calorie_qa, 'goal_timeline', 'Not specified')
+        
+        prompt = f"""
+            You are a compassionate, knowledgeable AI wellness coach helping users with fitness, nutrition, and healthy living. Use the details below to personalize your response.
+
+            📋 **User Profile**:
+            - Goal: {user.goals}
+            - Age: {user.age}
+            - Current Weight: {getattr(user, 'weight', 'Unknown')} kg
+            - Goal Weight: {goal_weight} {weight_unit}
+            - Height: {user.height} {user.height_unit}
+            - Wellness Status: {user.wellness_status}
+            - Country: {user.country}
+            - Goal Timeline: {goal_timeline}
+            - Eating Style: {eating_style}
+            - Activity Level: {activity_level}
+            - Dietary Preference: {getattr(user, 'diet_type', 'Not specified')}
+            - Health Conditions: {getattr(user, 'health_conditions', 'None')}
+            - Sleep or Stress Notes: {getattr(user, 'sleep_stress_notes', 'Not specified')}
+
+            🗣 **User Message**:
+            "{user_input}"
+
+            🎯 **Your Task**:
+            Respond as a supportive coach who understands both physical and mental health. Your answer should:
+            - Be personalized and grounded in their profile
+            - Offer encouragement and actionable tips
+            - Be friendly, positive, and non-judgmental
+            - Address both lifestyle and mindset when appropriate
+
+            Respond with just your message to the user. Avoid any markdown or system notes.
+            """
+        return prompt
+
 
             
     def chat_with_ai(self, user_context, conversation_id: uuid4, base_64_image=None, text=""):
@@ -864,7 +932,7 @@ class CalorieAIAssistant:
         if streak.last_streak_date == today:
             return  # already counted today
 
-        if streak.last_streak_date == today - timedelta(days=1):
+        if streak.last_streak_date == yesterday:
             streak.current_streak += 1
         else:
             streak.current_streak = 1
