@@ -18,6 +18,12 @@ class SymptomSerializer(serializers.ModelSerializer):
             'started_on', 'severity', 'sensation', 'worsens_with', 'notes', 'created_at'
         ]
         read_only_fields = ['created_at']
+        
+    def validate_session(self, value):
+        if not value:
+            raise serializers.ValidationError("Session is required.")
+        return value
+
 
 
 class SymptomLocationSerializer(serializers.ModelSerializer):
