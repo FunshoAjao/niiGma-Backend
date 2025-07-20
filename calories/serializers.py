@@ -1,6 +1,8 @@
 from rest_framework import serializers
 
 from django.db import models
+
+from calories.choices import ReminderChoices
 from .models import CalorieQA, LoggedMeal, LoggedWorkout, SuggestedMeal, SuggestedWorkout, UserCalorieStreak
 
 class MealSource(models.TextChoices):
@@ -10,6 +12,7 @@ class MealSource(models.TextChoices):
     Scanned = "scanned", "Scanned"
 
 class CalorieSerializer(serializers.ModelSerializer):
+    reminder = serializers.ChoiceField(choices=ReminderChoices.choices, default=ReminderChoices.Daily)
 
     class Meta:
         model = CalorieQA
