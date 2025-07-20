@@ -90,12 +90,15 @@ class TriviaSessionViewSet(viewsets.ModelViewSet):
         Returns whether the user can play trivia today based on mood logging."""
         profile = self.get_profile(request.user)
         serializer = TriviaProfileSerializer(profile)
+        user=request.user
 
         today = timezone.now().date()
         can_play = profile.has_used_any_feature_today and profile.last_played != today
 
         data = serializer.data
         data["can_play"] = can_play
+        user.is_trivia_setup = True
+        user.save()
         return CustomSuccessResponse(data=data)
     
     @action(detail=False, methods=["get"], url_path="start_trivia")
