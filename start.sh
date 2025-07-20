@@ -2,7 +2,7 @@
 # start.sh
 
 # Start Celery in background
-celery -A core worker -l info &
+celery -A core worker --loglevel=info --concurrency=5 --pool=prefork &
 
 # echo "⏱️ Starting Celery Beat..."
 celery -A core beat --loglevel=info &

@@ -219,6 +219,7 @@ CELERY_TASK_SERIALIZER = "json"
 BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_BROKER_URL = REDIS_URL
+CELERY_BROKER_POOL_LIMIT = 5
 
 CACHES = {
     'default': {
@@ -226,6 +227,9 @@ CACHES = {
         'LOCATION': REDIS_URL,
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            'CONNECTION_POOL_KWARGS': {
+                'max_connections': 500  # adjust as needed based on load
+            }
         },
         "KEY_PREFIX": 'core',
         "TIMEOUT": 300

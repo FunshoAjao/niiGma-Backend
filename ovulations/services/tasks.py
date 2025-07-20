@@ -213,61 +213,62 @@ def calculate_cycle_state(user_id, target_date: dt):
 
 from datetime import timedelta
 
-def get_or_create_cycle_for_date(user, target_date):
-    """
-    Returns an existing OvulationCycle that covers `target_date`,
-    or creates it on the fly based on the user's setup.
-    """
-    setup = CycleSetup.objects.filter(user=user).first()
-    if not setup:
-        return None
+def get_or_create_cycle_for_date(user:User, target_date):
+    try:
+        """
+        Returns an existing OvulationCycle that covers `target_date`,
+        or creates it on the fly based on the user's setup.
+        """
+        setup = CycleSetup.objects.filter(user=user).first()
+        if not setup:
+            return None
 
-    # 1. Check for existing cycle
-    cycle = OvulationCycle.objects.filter(
-        user=user,
-        start_date__lte=target_date,
-        end_date__gte=target_date
-    ).first()
+        # 1. Check for existing cycle
+        cycle = OvulationCycle.objects.filter(
+            user=user,
+            start_date__lte=target_date,
+            end_date__gte=target_date
+        ).first()
 
-    if cycle:
-        return cycle
-
-    # 2. No cycle found — create one dynamically
-    last_cycle = OvulationCycle.objects.filter(user=user).order_by("-start_date").first()
-
-    if last_cycle:
-        next_start = last_cycle.end_date + timedelta(days=1)
-    else:
-        next_start = setup.first_period_date or target_date
-
-    # Keep generating future cycles until we cover target_date
-    # Add a safeguard to prevent infinite loop
-    max_iterations = (target_date - next_start).days // (setup.cycle_length or 28) + 5
-    max_iterations = min(max_iterations, 100)  # cap it if needed
-
-    cycle_length = setup.cycle_length or 28
-    period_length = setup.period_length or 5
-
-    for _ in range(max_iterations):
-        next_end = next_start + timedelta(days=cycle_length - 1)
-        if next_start <= target_date <= next_end:
-            cycle, created = OvulationCycle.objects.get_or_create(
-                user=user,
-                start_date=next_start,
-                end_date=next_end,
-                defaults={
-                    "cycle_length": cycle_length,
-                    "period_length": period_length,
-                    "is_predicted": True,
-                }
-            )
-            if created:
-                logger.info(f"Cycle created for {user.email} from {next_start} to {next_end}")
+        if cycle:
             return cycle
-        next_start = next_end + timedelta(days=1)
 
-    logger.warning(f"Unable to create cycle for {user.email} covering {target_date.isoformat()} after {max_iterations} iterations.")
-    raise OverflowError("Unable to generate a cycle covering the target date after 1000 attempts.")
+        # 2. No cycle found — create one dynamically
+        last_cycle = OvulationCycle.objects.filter(user=user).order_by("-start_date").first()
+
+        if last_cycle:
+            next_start = last_cycle.end_date + timedelta(days=1)
+        else:
+            next_start = setup.first_period_date or target_date
+
+        # Keep generating future cycles until we cover target_date
+        # Add a safeguard to prevent infinite loop
+        max_iterations = (target_date - next_start).days // (setup.cycle_length or 28) + 5
+        max_iterations = min(max_iterations, 100)  # cap it if needed
+
+        cycle_length = setup.cycle_length or 28
+        period_length = setup.period_length or 5
+
+        for _ in range(max_iterations):
+            next_end = next_start + timedelta(days=cycle_length - 1)
+            if next_start <= target_date <= next_end:
+                cycle, created = OvulationCycle.objects.get_or_create(
+                    user=user,
+                    start_date=next_start,
+                    end_date=next_end,
+                    defaults={
+                        "cycle_length": cycle_length,
+                        "period_length": period_length,
+                        "is_predicted": True,
+                    }
+                )
+                if created:
+                    logger.info(f"Cycle created for {user.email} from {next_start} to {next_end}")
+                return cycle
+            next_start = next_end + timedelta(days=1)
+    except Exception as e:
+        logger.error(f"Error creating cycle for {user.email} on {target_date.isoformat()}: {e}")
+        logger.warning(f"Unable to create cycle for {user.email} covering {target_date.isoformat()} after {max_iterations} iterations.")
 
         
 from datetime import date
