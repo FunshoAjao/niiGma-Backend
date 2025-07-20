@@ -21,8 +21,8 @@ WEIGHT_UNITS = [
 ]
 
 MEASUREMENT_UNITS = [
-    ("serving", "Serving"),
-    ("gram", "Gram"),
+    ("servings", "Serving"),
+    ("grams", "Gram"),
     ("slice", "Slice"),
 ]
 

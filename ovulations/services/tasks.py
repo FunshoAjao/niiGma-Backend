@@ -241,19 +241,33 @@ def get_or_create_cycle_for_date(user, target_date):
         next_start = setup.first_period_date or target_date
 
     # Keep generating future cycles until we cover target_date
-    while True:
-        next_end = next_start + timedelta(days=(setup.cycle_length or 28) - 1)
+    # Add a safeguard to prevent infinite loop
+    max_iterations = (target_date - next_start).days // (setup.cycle_length or 28) + 5
+    max_iterations = min(max_iterations, 100)  # cap it if needed
+
+    cycle_length = setup.cycle_length or 28
+    period_length = setup.period_length or 5
+
+    for _ in range(max_iterations):
+        next_end = next_start + timedelta(days=cycle_length - 1)
         if next_start <= target_date <= next_end:
-            return OvulationCycle.objects.create(
+            cycle, created = OvulationCycle.objects.get_or_create(
                 user=user,
                 start_date=next_start,
                 end_date=next_end,
-                cycle_length=setup.cycle_length or 28,
-                period_length=setup.period_length or 5,
-                is_predicted=True
+                defaults={
+                    "cycle_length": cycle_length,
+                    "period_length": period_length,
+                    "is_predicted": True,
+                }
             )
+            if created:
+                logger.info(f"Cycle created for {user.email} from {next_start} to {next_end}")
+            return cycle
         next_start = next_end + timedelta(days=1)
 
+    logger.warning(f"Unable to create cycle for {user.email} covering {target_date.isoformat()} after {max_iterations} iterations.")
+    raise OverflowError("Unable to generate a cycle covering the target date after 1000 attempts.")
 
         
 from datetime import date
