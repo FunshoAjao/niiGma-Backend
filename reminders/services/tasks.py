@@ -57,7 +57,7 @@ def generate_weekly_insights(user_id):
         "message": f"You’re {'under' if under_target else 'on/over'} your target this week.",
     }
 
-def send_push_notification(title, message, device_type, registration_token):
+def send_push_notification(title, message, device_type, registration_token, route: str = None):
     print('About to send reminder now')
     PushNotificationService(device_type=device_type).send_push_notification(title=title, body=message, registration_token=registration_token)
 
@@ -130,6 +130,7 @@ class Reminder:
         title = "Calorie Reminder"
         daily_msg = "Time to log your meal on the Niigma app today!"
         forget_msg = "It's not too late! Log your meal on the Niigma app now."
+        route = "meal-log"
 
         for user in users:
             reminder_type = user.calorie_qa.reminder
@@ -144,7 +145,7 @@ class Reminder:
                     date__date=today
                 ).exists()
                 if not has_logged_today:
-                    send_push_notification(title, forget_msg, device_type, device_token)
+                    send_push_notification(title, forget_msg, device_type, device_token, route)
                 
     def send_daily_meal_reminders(self):
         users = User.objects.filter(
@@ -158,9 +159,10 @@ class Reminder:
 
         title = "Calorie Reminder"
         message = "Time to log your meal on the Niigma app today!"
+        route = "meal-log"
         
         for user in users:
-            send_push_notification(title, message, user.device_type, user.device_token)
+            send_push_notification(title, message, user.device_type, user.device_token, route)
             
     def send_reminders_if_user_forgot_to_log_meal(self):
         today = now().date()
@@ -176,6 +178,7 @@ class Reminder:
 
         title = "Calorie Reminder"
         message = "It's not too late! Log your meal on the Niigma app now."
+        route = "meal-log"
 
         for user in users:
             has_logged_today = LoggedMeal.objects.filter(
@@ -184,4 +187,4 @@ class Reminder:
             ).exists()
 
             if not has_logged_today:
-                send_push_notification(title, message, user.device_type, user.device_token)
+                send_push_notification(title, message, user.device_type, user.device_token, route)

@@ -16,7 +16,7 @@ class DeviceInterface(abc.ABC):
 
 class WebPushNotification(DeviceInterface):
     def send_push_notification(
-        self, title: str, body: str, registration_token: str
+        self, title: str, body: str, registration_token: str, route: str = None
     ) -> None:
         """Send web push notifications to users"""
         message = messaging.Message(
@@ -28,6 +28,7 @@ class WebPushNotification(DeviceInterface):
                 ),
                 data={"summary": f"{body}"},
             ),
+            data={"route": route} if route else {},
             token=registration_token,
         )
         response = messaging.send(message)
@@ -36,7 +37,7 @@ class WebPushNotification(DeviceInterface):
 
 class AndroidPushNotification(DeviceInterface):
     def send_push_notification(
-        self, title: str, body: str, registration_token: str
+        self, title: str, body: str, registration_token: str, route: str = None
     ) -> None:
         """Send push notifications to Android devices"""
         message = messaging.Message(
@@ -48,6 +49,7 @@ class AndroidPushNotification(DeviceInterface):
                     color="#00BCD4",  # More enticing, modern teal
                 ),
             ),
+            data={"route": route} if route else {},
             token=registration_token,
         )
         response = messaging.send(message)
@@ -57,7 +59,7 @@ class AndroidPushNotification(DeviceInterface):
 
 class IOSPushNotification(DeviceInterface):
     def send_push_notification(
-        self, title: str, body: str, registration_token: str
+        self, title: str, body: str, registration_token: str, route: str = None
     ) -> None:
         """Send push notifications to iOS devices"""
         message = messaging.Message(
@@ -73,6 +75,7 @@ class IOSPushNotification(DeviceInterface):
                     image="https://res.cloudinary.com/dv86ryr55/image/upload/v1749732930/Niigma_logo_sbuu9t.jpg"  # URL to the icon
                 ),
             ),
+            data={"route": route} if route else {},
             token=registration_token,
         )
         response = messaging.send(message)
@@ -96,6 +99,6 @@ class PushNotificationService:
             raise ValueError("Unsupported device type")
 
     def send_push_notification(
-        self, title: str, body: str, registration_token: str
+        self, title: str, body: str, registration_token: str, route: str = None
     ) -> None:
-        self.device.send_push_notification(title, body, registration_token)
+        self.device.send_push_notification(title, body, registration_token, route)
