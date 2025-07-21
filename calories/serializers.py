@@ -5,6 +5,22 @@ from django.db import models
 from calories.choices import ReminderChoices
 from .models import CalorieQA, LoggedMeal, LoggedWorkout, SuggestedMeal, SuggestedWorkout, UserCalorieStreak
 
+class FlexibleChoiceField(serializers.ChoiceField):
+    def to_internal_value(self, data):
+        # First, check if data matches the valid values
+        if data in self.choices:
+            return data
+
+        # Then, try matching display labels (case-insensitive)
+        for key, label in self.choices.items():
+            if str(label).lower() == str(data).lower():
+                return key
+
+        self.fail("invalid_choice", input=data)
+
+    def to_representation(self, value):
+        return self.choices.get(value, value)
+
 class MealSource(models.TextChoices):
     Barcode = "barcode", "Barcode"
     Manual = "manual", "Manual"
@@ -12,8 +28,7 @@ class MealSource(models.TextChoices):
     Scanned = "scanned", "Scanned"
 
 class CalorieSerializer(serializers.ModelSerializer):
-    reminder = serializers.ChoiceField(choices=ReminderChoices.choices, default=ReminderChoices.Daily)
-
+    reminder = FlexibleChoiceField(choices=ReminderChoices.choices, default=ReminderChoices.Daily)
     class Meta:
         model = CalorieQA
         fields = '__all__'
