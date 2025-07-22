@@ -345,7 +345,7 @@ class SymptomViewSet(viewsets.ModelViewSet):
         })
 
     def get_queryset(self):
-        return self.queryset.filter(location__session__user=self.request.user)
+        return self.queryset.filter(session__user=self.request.user)
     
     def create(self, request, *args, **kwargs):
         """
