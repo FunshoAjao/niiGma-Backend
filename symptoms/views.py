@@ -422,6 +422,15 @@ class SymptomAnalysisView(viewsets.ModelViewSet):
                 symptom = Symptom.objects.select_related("session").get(id=symptom_id)
             except Symptom.DoesNotExist:
                 return CustomErrorResponse(message="No symptom recorded yet!")
+            symptom_analysis = SymptomAnalysis.objects.filter(session=symptom.session).first()
+            if symptom_analysis:
+                return CustomSuccessResponse(
+                    data={
+                        "possible_causes": symptom_analysis.possible_causes,
+                        "advice": symptom_analysis.advice
+                    },
+                    message="Analysis already exists for this session."
+                )
             builder = SymptomPromptBuilder(request.user, symptom)
             result = builder.build_analysis_from_symptoms()
             transaction.on_commit(lambda: generate_and_save_analysis.delay(symptom_id))

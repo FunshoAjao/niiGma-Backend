@@ -6,7 +6,7 @@ from symptoms.models import Symptom, SymptomAnalysis
 from utils.helpers.ai_service import OpenAIClient
 from core.celery import app as celery_app
 from celery.utils.log import get_task_logger
-
+import logging
 logger = get_task_logger(__name__)
 
 @celery_app.task(name="generate_and_save_analysis")
@@ -98,9 +98,9 @@ class SymptomPromptBuilder:
         """
         Generates analysis using the symptom object, its location, and its session.
         """
-        body_parts = self.symptom.body_areas
-        symptom_names = self.symptom.symptom_names
-        description = self.symptom.description
+        body_parts = str(self.symptom.body_areas).replace('"', '\\"')
+        symptom_names = ', '.join([f'"{s}"' for s in self.symptom.symptom_names]).replace('"', '\\"')
+        description = str(self.symptom.description).replace('"', '\\"')
         started_on = self.symptom.started_on
         severity = self.symptom.severity
         sensation = self.symptom.sensation
@@ -109,8 +109,6 @@ class SymptomPromptBuilder:
         age = self.session.age
         biological_sex = self.session.biological_sex
 
-        symptoms_formatted = ', '.join([f'"{s}"' for s in symptom_names])
-        
         prompt = f"""
             You are a helpful medical support assistant.
 
@@ -137,7 +135,7 @@ class SymptomPromptBuilder:
             Here is the symptom report:
 
             - Body Part: {body_parts}
-            - Symptoms: {symptoms_formatted}
+            - Symptoms: {symptom_names}
             - Description: {description}
             - Started On: {started_on}
             - Severity: {severity}
@@ -146,13 +144,52 @@ class SymptomPromptBuilder:
             - Notes: {notes}
             - Age: {age}
             - Biological Sex: {biological_sex}
-            """
+        """
 
-        response = OpenAIClient.generate_response_list(prompt)
-        if not response:
-            raise serializers.ValidationError(
-                {"message": "Failed to get analysis from the AI service.", "status": "failed"},
-                code=500
-            )
-        response = json.loads(response)
-        return response
+         # Call the new retry logic method
+        response_json = self.get_ai_response_with_retry(prompt)
+
+        return response_json
+
+
+    def get_ai_response_with_retry(self, prompt, max_retries=3, delay=2):
+        """
+        Tries to get a valid AI response with retry logic for JSONDecodeError.
+        Retries up to `max_retries` times with a delay between attempts.
+        """
+        for attempt in range(max_retries):
+            response = OpenAIClient.generate_response_list(prompt)
+            
+            if not response:
+                raise serializers.ValidationError(
+                    {"message": "Failed to get analysis from the AI service.", "status": "failed"},
+                    code=500
+                )
+
+            logging.debug(f"Attempt {attempt + 1}: Raw AI Response:")
+            logging.debug(response)
+
+            try:
+                response_json = json.loads(response)
+                return response_json  # Return if successful
+            except json.JSONDecodeError as e:
+                logging.error(f"JSONDecodeError: {e}")
+                logging.error("Response that caused the error:")
+                logging.error(response)
+
+                # If it's the last attempt, raise the error
+                if attempt == max_retries - 1:
+                    raise serializers.ValidationError(
+                        {"message": "Failed to parse AI response. Invalid JSON format.", "status": "failed"},
+                        code=500
+                    )
+
+                # Wait before retrying
+                time.sleep(delay)
+                logging.info(f"Retrying... (Attempt {attempt + 2})")
+
+        # If all retries fail, return an error
+        raise serializers.ValidationError(
+            {"message": "Failed to process the analysis after multiple attempts.", "status": "failed"},
+            code=500
+        )
