@@ -501,12 +501,17 @@ class SymptomAnalysisView(viewsets.ModelViewSet):
             first_symptom = session.symptoms.first()
         except (SymptomSession.DoesNotExist, AttributeError):
             return CustomErrorResponse(message="Report not found or incomplete.")
+        
+        duration = (
+            first_symptom.get_duration(reference_date=session.created_at.date())
+            if first_symptom else "N/A"
+        )
 
         return CustomSuccessResponse(data={
             "recorded_at": session.created_at.strftime("%Y-%m-%d %H:%M"),
             "age_sex": f"{session.age}yrs {session.biological_sex}",
             "conditions": [cause["name"] for cause in analysis.possible_causes],
-            "duration": "1 week",  # Optional: make dynamic later
+            "duration": duration,  # Optional: make dynamic later
             "area": first_symptom.body_areas if first_symptom else "N/A",
             "full_details": {
                 "summary": f"Reported Symptoms: {', '.join(first_symptom.symptom_names)}" if first_symptom else "",

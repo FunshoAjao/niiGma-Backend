@@ -19,7 +19,7 @@ def generate_and_save_analysis(symptom_id):
     builder = SymptomPromptBuilder(user=symptom.session.user, symptom=symptom)
     analysis_text = builder.build_analysis_from_symptoms()  # returns formatted string
 
-    analysis, created = SymptomAnalysis.objects.update_or_create(
+    _, created = SymptomAnalysis.objects.update_or_create(
         session=symptom.session,
         defaults={
             "possible_causes": analysis_text["causes"],
@@ -27,7 +27,6 @@ def generate_and_save_analysis(symptom_id):
         }
     )
     logger.info(f"Analysis {'created' if created else 'updated'} for session {symptom.session.id}")
-    return
 
 class SymptomPromptBuilder:
     def __init__(self, user, symptom: Symptom=None):

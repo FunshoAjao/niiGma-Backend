@@ -1,7 +1,9 @@
+import dateparser
 from django.db import models
 from accounts.models import User
 from common.models import BaseModel
 from symptoms.choices import BiologicalSex
+from datetime import date
 
 class SymptomSession(BaseModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='symptom_sessions')
@@ -31,6 +33,28 @@ class Symptom(BaseModel):
 
     def __str__(self):
         return f"{', '.join(self.body_areas)}: {', '.join(self.symptom_names)}"
+    
+    def get_duration(self, reference_date=None):
+        """
+        Returns the duration of the symptom as a human-readable string.
+        :param reference_date: Optional; defaults to today. Used to calculate duration from a fixed point.
+        """
+        if not self.started_on:
+            return "N/A"
+
+        started_on_date = dateparser.parse(self.started_on)
+        if not started_on_date:
+            return "Unknown"
+
+        if not reference_date:
+            reference_date = date.today()
+
+        duration_days = (reference_date - started_on_date.date()).days
+
+        if duration_days < 0:
+            return "Unknown"
+
+        return f"{duration_days} days" if duration_days != 1 else "1 day"
 
 class SymptomAnalysis(BaseModel):
     session = models.OneToOneField(SymptomSession, on_delete=models.CASCADE, related_name='analysis')
