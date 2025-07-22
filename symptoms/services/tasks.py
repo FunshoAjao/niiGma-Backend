@@ -1,6 +1,7 @@
 
 
 import json
+import time
 from rest_framework import serializers
 from symptoms.models import Symptom, SymptomAnalysis
 from utils.helpers.ai_service import OpenAIClient
