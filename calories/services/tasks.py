@@ -224,21 +224,23 @@ class CalorieAIAssistant:
 
             {profile}
 
-            
-            {previous_chat}             
+            {previous_chat}
 
             🗣 User: {user_input}
 
             🎯 Your Task:
-            Respond as a supportive coach who understands both physical and mental health. Your answer should:
-            - Be personalized and grounded in their profile
-            - Offer encouragement and actionable tips
-            - Be friendly, positive, and non-judgmental
-            - Address both lifestyle and mindset when appropriate
+            Respond as a supportive coach who understands both physical and mental health. Your answer must:
+            - Be concise: get to the point, but don't skip important insights, clear, and focused—don’t overwhelm with too much info, but keep all tips actionable and meaningful
+            - Be personalized and grounded in their profile and chat history
+            - Offer practical suggestions or solutions they can act on now
+            - Encourage continuity: based on what they ask, suggest 1–2 related things they might want help with next
+            - Be friendly, supportive, and non-judgmental
+            - Address both mindset and lifestyle where it makes sense
 
             Respond with just your message to the user. Avoid any markdown or system notes.
             """
         return prompt.strip()
+
 
     
     def get_conversation_context(self, conversation_id, max_turns=2):
