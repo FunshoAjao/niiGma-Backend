@@ -236,6 +236,7 @@ class CalorieAIAssistant:
             - Encourage continuity: based on what they ask, suggest 1–2 related things they might want help with next
             - Be friendly, supportive, and non-judgmental
             - Address both mindset and lifestyle where it makes sense
+            - Suggest one or two relevant follow-up actions or questions to keep the conversation going naturally (e.g., “Would you like help building a routine for that?” or “Want me to track your progress this week?”)
 
             Respond with just your message to the user. Avoid any markdown or system notes.
             """
