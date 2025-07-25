@@ -609,3 +609,36 @@ class PromptHistoryView(viewsets.ModelViewSet):
             return self.get_paginated_response(serializer.data)
         serializer = self.get_serializer(page, many=True)
         return self.get_paginated_response_for_none_records(data=serializer.data)
+    
+    
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="page_size",
+                description="Page number for pagination",   
+                required=False,
+                type=int,
+            ),
+            OpenApiParameter(
+                name="page",
+                description="Page size for pagination",
+                required=False,
+                type=int,
+            )
+        ]
+    )
+    @action(
+        detail=False, methods=["get"],
+        url_path="get_all_conversation",
+        serializer_class=PromptHistorySerializer,
+        permission_classes=[IsAuthenticated]
+        )
+    def get_all_conversation(self, request):
+        queryset = PromptHistory.objects.filter(user=request.user)
+        queryset = self.filter_queryset(queryset)
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(page, many=True)
+        return self.get_paginated_response_for_none_records(data=serializer.data)
