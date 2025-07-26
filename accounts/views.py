@@ -26,8 +26,8 @@ from common.responses import CustomErrorResponse, CustomSuccessResponse
 from rest_framework.response import Response
 from rest_framework.views import status, APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from .models import PromptHistory, User
-from .serializers import AccountPasswordResetSerializer, ChangePasswordSerializer, ChatWithAiSerializer, DeviceTokenSerializer, EmailSerializer, LoginSerializer, LogoutSerializer, PasswordResetConfirmationSerializer, PromptHistorySerializer, PushNotificationSerializer, UserSerializer, VerificationCodeSerializer
+from .models import Conversation, PromptHistory, User
+from .serializers import AccountPasswordResetSerializer, ChangePasswordSerializer, ChatWithAiSerializer, ConversationSerializer, DeviceTokenSerializer, EmailSerializer, LoginSerializer, LogoutSerializer, PasswordResetConfirmationSerializer, PromptHistorySerializer, PushNotificationSerializer, UserSerializer, VerificationCodeSerializer
 from django.db import transaction
 import logging
 
@@ -519,6 +519,12 @@ class UserViewSet(viewsets.ModelViewSet):
         if not serializer.is_valid():
             return CustomErrorResponse(message=serializer.errors, status=400)
         validated_data = serializer.validated_data
+        try:
+            conversation_id = validated_data.get("conversation_id", None)
+            if conversation_id:
+                Conversation.objects.get(id=conversation_id, user=user)
+        except Conversation.DoesNotExist:
+            return CustomErrorResponse(message="Conversation not found", status=404)
         response, conversation_id = CalorieAIAssistant(user).chat_with_ai(
             validated_data.get("user_prompt"),
             validated_data.get("conversation_id", None),
@@ -598,7 +604,7 @@ class PromptHistoryView(viewsets.ModelViewSet):
         permission_classes=[IsAuthenticated]
         )
     def get_conversation(self, request, conversation_id):
-        queryset = PromptHistory.objects.filter(user=request.user, conversation_id=conversation_id)
+        queryset = PromptHistory.objects.filter(user=request.user, conversation__id=conversation_id)
         section = request.query_params.get("section")
         if section:
             queryset = queryset.filter(section=section)
@@ -607,7 +613,7 @@ class PromptHistoryView(viewsets.ModelViewSet):
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
-        serializer = self.get_serializer(page, many=True)
+        serializer = self.get_serializer(queryset, many=True)
         return self.get_paginated_response_for_none_records(data=serializer.data)
     
     
@@ -630,15 +636,15 @@ class PromptHistoryView(viewsets.ModelViewSet):
     @action(
         detail=False, methods=["get"],
         url_path="get_all_conversation",
-        serializer_class=PromptHistorySerializer,
+        serializer_class=ConversationSerializer,
         permission_classes=[IsAuthenticated]
         )
     def get_all_conversation(self, request):
-        queryset = PromptHistory.objects.filter(user=request.user)
+        queryset = Conversation.objects.filter(user=request.user)
         queryset = self.filter_queryset(queryset)
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
-        serializer = self.get_serializer(page, many=True)
+        serializer = self.get_serializer(queryset, many=True)
         return self.get_paginated_response_for_none_records(data=serializer.data)

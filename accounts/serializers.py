@@ -6,7 +6,7 @@ from rest_framework import serializers
 from django.core.files.base import ContentFile
 from accounts.choices import DeviceType, Gender
 from utils.helpers.cloudinary import CloudinaryFileUpload
-from .models import PromptHistory, User
+from .models import Conversation, PromptHistory, User
 
 class Base64ImageField(serializers.ImageField):
     def to_internal_value(self, data):
@@ -176,3 +176,9 @@ class PushNotificationSerializer(serializers.Serializer):
 class DeviceTokenSerializer(serializers.Serializer):
     device_token = serializers.CharField(required=True)
     device_type = serializers.ChoiceField(choices=DeviceType, required=True)
+    
+class ConversationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Conversation
+        fields = '__all__'
+        read_only_fields = ['id', 'user', 'created_at', 'updated_at']

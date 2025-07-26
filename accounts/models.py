@@ -122,13 +122,23 @@ class User(AbstractBaseUser, PermissionsMixin):
             self.email = self.email.lower().strip()
         super().save(*args, **kwargs)
         
+class Conversation(BaseModel):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, db_index=True)
+    title = models.CharField(max_length=255, blank=True, null=True)
 
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.title or f"Conversation {self.id}"
+    
 class PromptHistory(BaseModel):
+    conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name='messages', db_index=True, null=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE) 
     section = models.CharField(choices=Section, max_length=50)
     prompt = models.TextField()
     response = models.TextField()
-    conversation_id = models.UUIDField(default=uuid.uuid4, db_index=True)
 
     class Meta:
         ordering = ['-created_at']
+        

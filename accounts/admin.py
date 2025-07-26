@@ -15,13 +15,13 @@ class PromptHistoryAdmin(admin.ModelAdmin):
     list_display = (
         'user',
         'section',
-        'conversation_id',
+        'conversation',
         'short_prompt',
         'short_response',
         'created_at',
     )
     list_filter = ('section', 'created_at')
-    search_fields = ('user__email', 'prompt', 'response', 'conversation_id')
+    search_fields = ('user__email', 'prompt', 'response', 'conversation__title')
     readonly_fields = ('created_at',)
     ordering = ('-created_at',)
 

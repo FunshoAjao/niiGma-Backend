@@ -11,7 +11,7 @@ from uuid import uuid4
 from accounts.choices import Section
 from calories.serializers import LoggedMealSerializer, MealSource
 from utils.helpers.ai_service import OpenAIClient
-from accounts.models import PromptHistory, User
+from accounts.models import Conversation, PromptHistory, User
 import requests
 from ..models import MEAL_TYPES, CalorieQA, LoggedMeal, SuggestedMeal, SuggestedWorkout, UserCalorieStreak
 from rest_framework import serializers
@@ -238,8 +238,14 @@ class CalorieAIAssistant:
             - Address both mindset and lifestyle where it makes sense
             - Suggest one or two relevant follow-up actions or questions to keep the conversation going naturally (e.g., “Would you like help building a routine for that?” or “Want me to track your progress this week?”)
 
-            Respond with just your message to the user. Avoid any markdown or system notes.
-            """
+            Respond in this JSON format:
+            {{
+                "title": "[Short, friendly title summarizing the topic]",
+                "message": "[Your message to the user. Avoid any markdown or system notes]"
+            }}
+
+            Keep the title short and relevant to the user's request (e.g., 'Meal Planning Help' or 'Motivation to Exercise'). Only return valid JSON.
+        """
         return prompt.strip()
 
 
@@ -315,21 +321,35 @@ class CalorieAIAssistant:
         prompt = self.get_user_prompt_with_previous_conversation(user_context, chat_history)
         # Call OpenAI here and parse the JSON result
         response = OpenAIClient.generate_response(prompt)
-        if not response:
+        try:
+            parsed = json.loads(response)
+            title = parsed.get("title", "AI Conversation")
+            message = parsed.get("message", response)
+        except json.JSONDecodeError:
+            title = "AI Conversation"
+            message = response
+            
+        if not message:
             raise serializers.ValidationError(
                 {"message": "Failed to get a response from the Niigma AI service.", "status": "failed"},
                 code=500
             )
-        if conversation_id is None:
-            conversation_id = uuid4()
+        
+        if not conversation_id:
+            conversation = Conversation.objects.create(user=self.user, title=f"{title}")
+        else:
+            conversation = Conversation.objects.get(id=conversation_id)
+
+        # Save prompt + response
         PromptHistory.objects.create(
-                    user=self.user,
-                    section=Section.NONE,
-                    prompt=user_context,
-                    response=response,
-                    conversation_id=conversation_id
-                )
-        return response, conversation_id
+            user=self.user,
+            section=Section.NONE,
+            prompt=text,
+            response=message,
+            conversation=conversation
+        )
+
+        return message, conversation.id
 
     def chat_with_ai_with_base64(self, user_context, base64_image,  text=""):
         prompt = self.get_user_prompt( user_context)
