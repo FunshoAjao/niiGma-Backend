@@ -60,6 +60,7 @@ class SymptomAnalysis(BaseModel):
     session = models.OneToOneField(SymptomSession, on_delete=models.CASCADE, related_name='analysis')
     possible_causes = models.JSONField()  # Store a list of dicts with name, description, probability
     advice = models.TextField(blank=True)
+    user_report = models.TextField(blank=True, help_text="Formatted AI narrative for user/doctor.") 
 
     def __str__(self):
         return f"Analysis for {self.session.user.full_name}"

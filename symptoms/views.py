@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
 from common.responses import CustomErrorResponse, CustomSuccessResponse
-from symptoms.services.tasks import SymptomPromptBuilder, generate_and_save_analysis
+from symptoms.services.tasks import SymptomPromptBuilder, generate_and_save_analysis, generate_user_report_and_save_analysis
 from .models import FeverTriggers, SensationDescription, SymptomSession, SymptomLocation, Symptom, SymptomAnalysis
 from .serializers import (
     BodyPartSerializer,
@@ -517,5 +517,38 @@ class SymptomAnalysisView(viewsets.ModelViewSet):
                 "summary": f"Reported Symptoms: {', '.join(first_symptom.symptom_names)}" if first_symptom else "",
                 "causes": analysis.possible_causes,
                 "advice": analysis.advice,
+                "user_report": analysis.user_report if analysis.user_report else "No user report available."
             }
         })
+
+    @action(
+        methods=["get"],
+        detail=False,
+        url_path="user_report_detail/(?P<symptom_id>[^/.]+)",
+        permission_classes=[IsAuthenticated]
+    )
+    def user_report_detail(self, request, symptom_id=None):
+        """
+        Return detailed user report.
+        """
+        with transaction.atomic():
+            """
+            Trigger AI analysis and return pre-structured result for preview.
+            """
+            symptom = None
+            try:
+                symptom = Symptom.objects.select_related("session").get(id=symptom_id)
+            except Symptom.DoesNotExist:
+                return CustomErrorResponse(message="No symptom recorded yet!")
+            symptom_analysis = SymptomAnalysis.objects.filter(session=symptom.session).first()
+            if symptom_analysis:
+                return CustomSuccessResponse(
+                    data={
+                        "user_report": symptom_analysis.user_report,
+                    },
+                    message="User report already exists for this session."
+                )
+            builder = SymptomPromptBuilder(request.user, symptom)
+            result = builder.build_analysis_from_symptoms_user_report()
+            transaction.on_commit(lambda: generate_user_report_and_save_analysis.delay(symptom_id))
+            return CustomSuccessResponse(data=result, message="User report generated successfully")

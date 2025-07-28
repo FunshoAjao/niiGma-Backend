@@ -3,9 +3,14 @@
 import json
 import time
 from rest_framework import serializers
+from calories.models import LoggedMeal
+from mindspace.models import MoodMirrorEntry
+from ovulations.models import OvulationLog
 from symptoms.models import Symptom, SymptomAnalysis
 from utils.helpers.ai_service import OpenAIClient
 from core.celery import app as celery_app
+from django.utils import timezone
+from datetime import timedelta
 from celery.utils.log import get_task_logger
 import logging
 logger = get_task_logger(__name__)
@@ -24,6 +29,23 @@ def generate_and_save_analysis(symptom_id):
         defaults={
             "possible_causes": analysis_text["causes"],
             "advice": analysis_text["advice"]
+        }
+    )
+    logger.info(f"Analysis {'created' if created else 'updated'} for session {symptom.session.id}")
+    
+@celery_app.task(name="generate_user_report_and_save_analysis")
+def generate_user_report_and_save_analysis(symptom_id):
+    try:
+        symptom = Symptom.objects.select_related("session").get(id=symptom_id)
+    except Symptom.DoesNotExist:
+        return
+    builder = SymptomPromptBuilder(user=symptom.session.user, symptom=symptom)
+    user_report = builder.build_analysis_from_symptoms_user_report()  # returns formatted string
+
+    _, created = SymptomAnalysis.objects.update_or_create(
+        session=symptom.session,
+        defaults={
+            "user_report": user_report,
         }
     )
     logger.info(f"Analysis {'created' if created else 'updated'} for session {symptom.session.id}")
@@ -152,7 +174,116 @@ class SymptomPromptBuilder:
         return response_json
 
 
-    def get_ai_response_with_retry(self, prompt, max_retries=3, delay=2):
+    def build_analysis_from_symptoms_user_report(self):
+        """
+        Builds a contextual and user-friendly health report based on symptoms, mood, ovulation, and meals.
+        """
+        if not self.symptom or not self.session:
+            return "Insufficient data to generate a report."
+
+        user = self.session.user
+        today = timezone.now().date()
+
+        # SYMPTOM DATA
+        body_parts = str(self.symptom.body_areas).replace('"', '\\"')
+        symptom_names = ', '.join(s.title() for s in self.symptom.symptom_names)
+        description = self.symptom.description or "No description provided."
+        started_on = self.symptom.started_on
+        severity = self.symptom.severity or "Not specified"
+        sensation = self.symptom.sensation or "Not specified"
+        worsens_with = self.symptom.worsens_with or "Not specified"
+        notes = self.symptom.notes or "None"
+        age = self.session.age
+        biological_sex = self.session.biological_sex
+
+        # OVULATION
+        recent_ovulation = OvulationLog.objects.filter(
+            user=user, date__gte=today - timedelta(days=7)
+        ).order_by("-date").first()
+
+        ovulation_context = (
+            f"- Date: {recent_ovulation.date}\n"
+            f"- Flow: {recent_ovulation.flow}, Discharge: {recent_ovulation.discharge}\n"
+            f"- Mood: {recent_ovulation.mood or 'None'}, Symptoms: {', '.join(recent_ovulation.symptoms)}\n"
+            f"- Notes: {recent_ovulation.notes or 'None'}"
+            if recent_ovulation else "No recent ovulation data logged."
+        )
+
+        # MOOD
+        recent_moods = MoodMirrorEntry.objects.filter(
+            mind_space__user=user, date__gte=today - timedelta(days=7)
+        ).order_by("-date")[:3]
+
+        mood_list = [mood.mood for mood in recent_moods] or ["No moods logged"]
+        latest_reflection = recent_moods[0].reflection if recent_moods else "No reflection recorded recently."
+
+        # MEALS
+        recent_meals = LoggedMeal.objects.filter(
+            user=user, date__gte=today - timedelta(days=7)
+        ).order_by("-date")[:3]
+
+        meal_summary = (
+            "\n".join([
+                f"• {meal.date.date()}: {meal.food_item} - {meal.calories} kcal "
+                f"(P:{meal.protein}g, C:{meal.carbs}g, F:{meal.fats}g)"
+                for meal in recent_meals
+            ]) or "No recent meals logged."
+        )
+        
+        prompt = f"""
+            You are a helpful and structured health assistant.
+
+            Generate a health report using **this exact structure** below — do not remove or reorder any sections. Your output must strictly follow this format, preserving all numbered sections and headers:
+
+            1.⁠ ⁠How I Am Feeling
+
+            2.⁠ ⁠Description of My Experience
+
+            3.⁠ ⁠My niiGma app Considerations (not a diagnosis)
+
+            4.⁠ ⁠Self-Care Measures Tried (if any)
+
+            5.⁠ ⁠Notes for My Doctor
+
+            ⸻
+
+            Use the data below to write in the user's voice and fill in all five sections:
+
+            — SYMPTOMS —
+            - Body Part(s): {body_parts}
+            - Symptoms: {symptom_names}
+            - Description: {description}
+            - Started On: {started_on}
+            - Severity: {severity}
+            - Sensation: {sensation}
+            - Worsens With: {worsens_with}
+            - Notes: {notes}
+
+            — PERSONAL PROFILE —
+            - Age: {age}
+            - Biological Sex: {biological_sex}
+            - Affected areas: {body_parts}
+
+            — RECENT OVULATION —
+            {ovulation_context}
+
+            — RECENT MOOD —
+            - Moods: {", ".join(mood_list)}
+            - Reflection: "{latest_reflection}"
+
+            — RECENT MEALS —
+            {meal_summary}
+
+            Return your response strictly in the niigma user report style. Do not omit **any** section, and keep formatting clear and user-friendly. Avoid quoting the above; write as if you are the user giving a report.
+            """
+
+        # Call your AI service
+        response_text = self.get_ai_response_with_retry(prompt, parse_json=False)
+
+        return response_text
+
+
+    def get_ai_response_with_retry(self, prompt, max_retries=3, delay=2, parse_json=True):
         """
         Tries to get a valid AI response with retry logic for JSONDecodeError.
         Retries up to `max_retries` times with a delay between attempts.
@@ -168,6 +299,9 @@ class SymptomPromptBuilder:
 
             logging.debug(f"Attempt {attempt + 1}: Raw AI Response:")
             logging.debug(response)
+            
+            if not parse_json:
+                return response.strip()
 
             try:
                 response_json = json.loads(response)

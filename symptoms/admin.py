@@ -34,6 +34,7 @@ class SymptomAdmin(admin.ModelAdmin):
 class SymptomAnalysisAdmin(admin.ModelAdmin):
     list_display = ('id', 'session', 'created_at')
     search_fields = ('session__user__username',)
+    readonly_fields = ('user_report',)
     ordering = ('-created_at',)
 
 @admin.register(SensationDescription)
