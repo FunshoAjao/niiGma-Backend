@@ -541,7 +541,7 @@ class SymptomAnalysisView(viewsets.ModelViewSet):
             except Symptom.DoesNotExist:
                 return CustomErrorResponse(message="No symptom recorded yet!")
             symptom_analysis = SymptomAnalysis.objects.filter(session=symptom.session).first()
-            if symptom_analysis:
+            if symptom_analysis.user_report:
                 return CustomSuccessResponse(
                     data={
                         "user_report": symptom_analysis.user_report,

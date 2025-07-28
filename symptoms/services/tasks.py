@@ -233,21 +233,17 @@ class SymptomPromptBuilder:
         prompt = f"""
             You are a helpful and structured health assistant.
 
-            Generate a health report using **this exact structure** below — do not remove or reorder any sections. Your output must strictly follow this format, preserving all numbered sections and headers:
+            Generate a point-form health report using **this exact structure** below. Return each section using clear bullet points — no paragraphs or narrative writing. Your output must strictly follow this format, preserving all numbered sections and headers:
 
-            1.⁠ ⁠How I Am Feeling
-
-            2.⁠ ⁠Description of My Experience
-
-            3.⁠ ⁠My niiGma app Considerations (not a diagnosis)
-
-            4.⁠ ⁠Self-Care Measures Tried (if any)
-
+            1.⁠ ⁠How I Am Feeling  
+            2.⁠ ⁠Description of My Experience  
+            3.⁠ ⁠My niiGma app Considerations (not a diagnosis)  
+            4.⁠ ⁠Self-Care Measures Tried (if any)  
             5.⁠ ⁠Notes for My Doctor
 
             ⸻
 
-            Use the data below to write in the user's voice and fill in all five sections:
+            Use the user’s logs and health tracking data below to complete the report:
 
             — SYMPTOMS —
             - Body Part(s): {body_parts}
@@ -262,7 +258,7 @@ class SymptomPromptBuilder:
             — PERSONAL PROFILE —
             - Age: {age}
             - Biological Sex: {biological_sex}
-            - Affected areas: {body_parts}
+            - Affected Areas: {body_parts}
 
             — RECENT OVULATION —
             {ovulation_context}
@@ -274,8 +270,9 @@ class SymptomPromptBuilder:
             — RECENT MEALS —
             {meal_summary}
 
-            Return your response strictly in the niigma user report style. Do not omit **any** section, and keep formatting clear and user-friendly. Avoid quoting the above; write as if you are the user giving a report.
+            Return the full response in a bullet-point format only — **no paragraph storytelling**. All 5 sections must appear, with numbered headers intact.
             """
+
 
         # Call your AI service
         response_text = self.get_ai_response_with_retry(prompt, parse_json=False)
