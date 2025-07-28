@@ -7,8 +7,10 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from django.utils import timezone
 from accounts.models import User
 from datetime import timedelta, datetime
+import logging
+logger = logging.getLogger(__name__)
 from rest_framework.exceptions import NotFound
-from ovulations.services.tasks import calculate_cycle_state, predict_cycle_state
+from ovulations.services.tasks import OvulationAIAssistant, calculate_cycle_state, predict_cycle_state
 from ovulations.services.utils import get_next_phase, get_phase_guidance, parse_fuzzy_date
 from .models import CycleInsight, CycleSetup, CycleState, OvulationCycle, OvulationLog
 from .serializers import CycleInsightSerializer, CycleOnboardingSetUpSerializer, CycleSetupSerializer, InsightBlockSerializer, OvulationLogSerializer
@@ -25,12 +27,10 @@ class CycleSetupViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         user = request.user
 
-        # Check if a setup already exists for this user
         if CycleSetup.objects.filter(user=user, setup_complete=True).exists():
             return CustomErrorResponse(message="You already have a cycle setup.")
 
         data = request.data.copy()
-
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
 
@@ -39,27 +39,34 @@ class CycleSetupViewSet(viewsets.ModelViewSet):
             data.get("period_length"),
             data.get("cycle_length")
         ])
+
         serializer.save(user=user, setup_complete=setup_complete)
         user.is_ovulation_tracker_setup = True
         user.save()
-        
-        if data.get("first_period_date") and data.get("period_length") and data.get("cycle_length"):
-               start_date_str = data.get("first_period_date")  # e.g., "2025-06-20"
-               start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
 
-               cycle_length = int(data.get("cycle_length"))
-               end_date = start_date + timedelta(days=cycle_length - 1)
+        if setup_complete:
+            try:
+                start_date = datetime.strptime(data.get("first_period_date"), "%Y-%m-%d").date()
+                cycle_length = int(data.get("cycle_length"))
+                period_length = int(data.get("period_length"))
+            except (ValueError, TypeError):
+                return CustomErrorResponse(message="Invalid input values for date or cycle length.")
 
-               OvulationCycle.objects.create(
-                    user=user,
-                    start_date=start_date,
-                    end_date=end_date,
-                    cycle_length=data.get("cycle_length"),
-                    period_length=data.get("period_length"),
-                    is_predicted=False
-                )
-               calculate_cycle_state.delay(user.id, start_date)
-        return CustomSuccessResponse(data=serializer.data, message="cycle set up created successfully!")
+            end_date = start_date + timedelta(days=cycle_length - 1)
+
+            OvulationCycle.objects.create(
+                user=user,
+                start_date=start_date,
+                end_date=end_date,
+                cycle_length=cycle_length,
+                period_length=period_length,
+                is_predicted=False
+            )
+
+            calculate_cycle_state.delay(user.id, start_date)
+
+        return CustomSuccessResponse(data=serializer.data, message="Cycle setup created successfully!")
+
     
     def update(self, request, *args, **kwargs):
         raise NotFound()
@@ -175,17 +182,27 @@ class CycleSetupViewSet(viewsets.ModelViewSet):
         except ValueError:
             return CustomErrorResponse(message="Invalid date format. Use YYYY-MM-DD", status=400)
         user = request.user
+        
+        # Ensure user has completed setup
+        setup = CycleSetup.objects.filter(user=request.user, setup_complete=True).first()
+        if not setup:
+            return CustomErrorResponse(message="Please complete your cycle setup first.", status=400)
+        
         today = timezone.now().date()
         if selected_date > today:
             data = predict_cycle_state(user, selected_date)
             if not data:
                 return CustomErrorResponse(message="Prediction unavailable", status=404)
-            return CustomSuccessResponse(data=data)
+            return CustomSuccessResponse(data=data, message="Predicted cycle state for future date.")
         
         state = CycleState.objects.filter(user=user, date=selected_date).order_by("-date").first()
         if not state:
+            data = predict_cycle_state(user, selected_date)
+            if not data:
+                return CustomErrorResponse(message="Cycle state is being calculated. Please try again shortly.", status=202)
             calculate_cycle_state.delay(user.id, selected_date)
-            return CustomErrorResponse(message="Cycle state is being calculated. Please try again shortly.", status=202)
+            return CustomSuccessResponse(data=data, message="Predicted cycle state for future date.")
+            
         insights = CycleInsight.objects.filter(user=user, date=state.date)
         data = {
             "day_in_cycle": state.day_in_cycle,
@@ -205,6 +222,39 @@ class CycleSetupViewSet(viewsets.ModelViewSet):
 
         return CustomSuccessResponse(data=data)
         
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="get_phases_for_the_year_by_start_date/(?P<start_date>[^/.]+)"
+    )
+    def get_phases_for_the_year_by_start_date(self, request, start_date=None):
+        from django.core.cache import cache
+        """
+        Get all phases for the year based on a given start date.
+        """
+        user = request.user
+
+        try:
+            start_date = timezone.datetime.strptime(start_date, "%Y-%m-%d").date()
+        except ValueError:
+            return CustomErrorResponse(message="Invalid date format. Use YYYY-MM-DD", status=400)
+
+        # Ensure user has completed setup
+        cache_key = f"cycle_phase:{user.id}:{start_date.year}"
+        cached = cache.get(cache_key)
+        if cached:
+            logger.info(f"Cache hit for {cache_key}")
+            return CustomSuccessResponse(data=cached, message="Phases retrieved from cache.")
+        setup = CycleSetup.objects.filter(user=request.user, setup_complete=True).first()
+        if not setup:
+            return CustomErrorResponse(message="Please complete your cycle setup first.", status=400)
+
+        phases_in_year = OvulationAIAssistant(user, setup).get_cycle_phase_for_year(start_date)
+        cache.set(cache_key, phases_in_year, timeout=60 * 60 * 24)  # Cache for 1 day
+
+        return CustomSuccessResponse(data=phases_in_year, message="Phases for the year retrieved successfully.")
+        
+    
     @action(
         detail=False,
         methods=["get"],

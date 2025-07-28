@@ -5,6 +5,8 @@ from accounts.models import User
 from datetime import date as dt, timedelta
 from core.celery import app as celery_app
 from ovulations.choices import PeriodRegularity
+from collections import OrderedDict
+from datetime import datetime, timedelta
 from ovulations.services.utils import get_next_phase, get_phase_guidance
 from utils.helpers.ai_service import OpenAIClient
 from ..models import CycleInsight, CycleSetup, OvulationCycle, CyclePhaseType, CycleState
@@ -95,7 +97,61 @@ class OvulationAIAssistant:
         except Exception as e:
             logger.warning(f"Insight AI error: {e}")
             return []
+        
 
+    def get_cycle_phase_for_year(self, start_date: datetime.date):
+        user = self.user
+        try:
+            setup = CycleSetup.objects.only("cycle_length", "period_length", "regularity").get(user=user)
+        except CycleSetup.DoesNotExist:
+            return {}
+
+        cycle_length = setup.cycle_length or 28
+        period_length = setup.period_length or 5
+        end_date = start_date + timedelta(days=365)
+
+        # Generate cycles efficiently
+        cycles = list(self._generate_cycles(setup, start_date, end_date, cycle_length))
+
+        # Track the current day and generate the map
+        phase_map = OrderedDict()
+        current_day = start_date
+
+        for cycle_start, cycle_end in cycles:
+            while current_day <= cycle_end and current_day <= end_date:
+                phase = self._determine_phase(cycle_start, cycle_end, current_day, period_length)
+                phase_map[current_day.isoformat()] = phase
+                current_day += timedelta(days=1)
+
+            if current_day > end_date:
+                break
+
+        return phase_map
+
+
+    def _generate_cycles(self, setup : CycleSetup, start_date, end_date, cycle_length):
+        first_start = setup.first_period_date or start_date
+        current_start = first_start
+
+        while current_start <= end_date:
+            current_end = current_start + timedelta(days=cycle_length - 1)
+            yield (current_start, current_end)
+            current_start = current_end + timedelta(days=1)
+
+
+    def _determine_phase(self, cycle_start, cycle_end, day, period_length):
+        menstrual_end = cycle_start + timedelta(days=period_length)
+        ovulation_start = cycle_end - timedelta(days=period_length + 14)
+        ovulation_end = ovulation_start + timedelta(days=2)
+
+        if day <= menstrual_end:
+            return CyclePhaseType.MENSTRUAL
+        if menstrual_end < day <= ovulation_start:
+            return CyclePhaseType.FOLLICULAR
+        if ovulation_start < day <= ovulation_end:
+            return CyclePhaseType.OVULATION
+        return CyclePhaseType.LUTEAL
+    
 def predict_cycle_state(user, target_date: dt):
     try:
         setup = CycleSetup.objects.only('cycle_length', 'period_length', 'regularity').get(user=user)
@@ -246,7 +302,7 @@ def get_or_create_cycle_for_date(user:User, target_date):
         max_iterations = (target_date - next_start).days // (setup.cycle_length or 28) + 5
         max_iterations = min(max_iterations, 100)  # cap it if needed
 
-        cycle_length = setup.cycle_length or 28
+        cycle_length = max(setup.cycle_length or 28, 21)
         period_length = setup.period_length or 5
 
         for _ in range(max_iterations):
