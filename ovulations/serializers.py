@@ -28,6 +28,19 @@ class CycleSetupSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         # Optional: add any business logic for update (e.g., triggering recalculations)
         return super().update(instance, validated_data)
+    
+    def validate(self, data):
+        cycle_length = data.get("cycle_length")
+        period_length = data.get("period_length")
+
+        if cycle_length and period_length and period_length >= cycle_length:
+            raise serializers.ValidationError(
+                {"message": "Period length must be shorter than cycle length."
+                 , "status":"failed"},
+                code=400
+            )
+        return data
+
 
 class CycleOnboardingSetUpSerializer(serializers.Serializer):
     step = serializers.CharField(required=True)
