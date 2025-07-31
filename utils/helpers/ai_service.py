@@ -54,6 +54,10 @@ class OpenAIClient:
         try:
             content = response.choices[0].message.content
             return json.loads(content)
+        except json.JSONDecodeError as e:
+            print("⚠️ Failed to parse AI JSON:", e)
+            print("Raw content:", content)
+            return None
         except Exception as e:
             print("Error parsing meal plan:", e)
             return None

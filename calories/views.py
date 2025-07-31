@@ -1,6 +1,6 @@
 from datetime import date
 from accounts.choices import Section
-from calories.services.tasks import CalorieAIAssistant, update_user_calorie_streak
+from calories.services.tasks import CalorieAIAssistant, async_store_logged_meal_as_suggested, update_user_calorie_streak
 from common.responses import CustomErrorResponse, CustomSuccessResponse
 from django.utils import timezone
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -205,11 +205,15 @@ class CalorieViewSet(viewsets.ModelViewSet):
         if not calorie:
             return CustomErrorResponse(message="Calorie onboarding not done yet!", status=404)
 
-        suggested_meals = SuggestedMeal.objects.filter(calorie_goal=calorie, date__date=day)
+        suggested_meals = SuggestedMeal.objects.filter(
+            Q(calorie_goal=calorie) & (Q(date__date=day) | Q(is_template=True))
+        ).order_by('meal_type', '-is_template')
 
         if not suggested_meals.exists():
             CalorieAIAssistant(user).generate_suggested_meals_for_the_day(calorie.id, day)
-            suggested_meals = SuggestedMeal.objects.filter(calorie_goal=calorie, date=day)
+            suggested_meals = suggested_meals = SuggestedMeal.objects.filter(
+                Q(calorie_goal=calorie) & (Q(date__date=day) | Q(is_template=True))
+            ).order_by('meal_type', '-is_template')
 
         serializer = SuggestedMealSerializer(suggested_meals, many=True)
         return CustomSuccessResponse(data=serializer.data, status=200)
@@ -253,54 +257,89 @@ class CalorieViewSet(viewsets.ModelViewSet):
         detail=False,
         url_path="log_meal",
         permission_classes=[IsAuthenticated],
-        serializer_class = LoggedMealSerializer
+        serializer_class=LoggedMealSerializer,
     )
     def log_meal(self, request, *args, **kwargs):
         with transaction.atomic():
             user = request.user
-            serializer = LoggedMealSerializer(data=request.data)
+
+            serializer = self.get_serializer(data=request.data)
             if not serializer.is_valid():
                 return CustomErrorResponse(message=serializer.errors, status=400)
-            
-            if not hasattr(self.request.user, "calorie_qa"):
-                return CustomErrorResponse(message="You are yet to set up your calories profile!", status=400)
-            
+
+            calorie_goal = self.validate_and_get_calorie_profile(user)
+            if isinstance(calorie_goal, Response):
+                return calorie_goal  # CustomErrorResponse
+
             validated_data = serializer.validated_data
-            food_item = validated_data.get("food_item")
-            barcode = validated_data.get("barcode")
-            scanned_image = validated_data.get("image_url")
-            
-            nutrition = CalorieAIAssistant(user, validated_data).extract_food_items_from_meal_source(
-                validated_data.get("meal_source"), validated_data['number_of_servings_or_gram_or_slices'], 
-                validated_data['measurement_unit'], food_item, barcode, scanned_image)
-            
+            nutrition = self.extract_nutrition_data(user, validated_data)
             if not nutrition:
                 return CustomErrorResponse(message="Nutrition estimation failed", status=400)
-            
-            if validated_data['meal_source'] == MealSource.Barcode:
-                food_item = nutrition.pop('food_name', None)
-                validated_data['food_item'] = food_item
-            elif validated_data['meal_source'] == MealSource.Manual:
-                nutrition.pop("food_item", None)
-            elif validated_data['meal_source'] == MealSource.Scanned:
-                food_item = nutrition.pop('food_name', None)
-                number_of_servings_or_gram_or_slices = nutrition.pop('servings', None)
-                validated_data['food_item'] = food_item
-                validated_data['number_of_servings_or_gram_or_slices'] = number_of_servings_or_gram_or_slices
-                
-            LoggedMeal.objects.update_or_create(
-                user=user,
-                meal_type=validated_data['meal_type'],
-                date=validated_data.get("date", timezone.now().date()),
-                defaults={
-                    'food_item': validated_data['food_item'],
-                    'number_of_servings_or_gram_or_slices': validated_data['number_of_servings_or_gram_or_slices'],
-                    'measurement_unit': validated_data['measurement_unit'],
-                    **nutrition
-                }
-            )
-            transaction.on_commit(lambda: update_user_calorie_streak.delay(user.id))
+
+            self.clean_validated_data_based_on_meal_source(validated_data, nutrition)
+
+            self.save_logged_meal(user, validated_data, nutrition)
+            self.trigger_async_tasks(user, validated_data, nutrition)
+
             return CustomSuccessResponse(message="Meal logged successfully!", status=200)
+
+    def validate_and_get_calorie_profile(self, user):
+        if not hasattr(user, "calorie_qa"):
+            return CustomErrorResponse(message="You are yet to set up your calories profile!", status=400)
+        return user.calorie_qa
+
+
+    def extract_nutrition_data(self, user, validated_data):
+        return CalorieAIAssistant(user, validated_data).extract_food_items_from_meal_source(
+            validated_data.get("meal_source"),
+            validated_data["number_of_servings_or_gram_or_slices"],
+            validated_data["measurement_unit"],
+            validated_data.get("food_item"),
+            validated_data.get("barcode"),
+            validated_data.get("image_url")
+        )
+
+
+    def clean_validated_data_based_on_meal_source(self, validated_data, nutrition):
+        source = validated_data["meal_source"]
+        if source == MealSource.Barcode or source == MealSource.Scanned:
+            validated_data["food_item"] = nutrition.pop("food_name", validated_data.get("food_item"))
+        if source == MealSource.Scanned:
+            validated_data["number_of_servings_or_gram_or_slices"] = nutrition.pop("servings", validated_data.get("number_of_servings_or_gram_or_slices"))
+        if source == MealSource.Manual:
+            nutrition.pop("food_item", None)  # Avoid overwriting
+
+
+    def save_logged_meal(self, user, validated_data, nutrition):
+        LoggedMeal.objects.update_or_create(
+            user=user,
+            meal_type=validated_data["meal_type"],
+            date=validated_data.get("date", timezone.now().date()),
+            defaults={
+                "food_item": validated_data["food_item"],
+                "number_of_servings_or_gram_or_slices": validated_data["number_of_servings_or_gram_or_slices"],
+                "measurement_unit": validated_data["measurement_unit"],
+                **nutrition
+            }
+        )
+
+
+    def trigger_async_tasks(self, user, validated_data, nutrition):
+
+        transaction.on_commit(lambda: update_user_calorie_streak.delay(user.id))
+
+        meal_data = {
+            "meal_type": validated_data["meal_type"],
+            "food_item": validated_data["food_item"],
+            "date": str(validated_data.get("date", timezone.now().date())),
+            "calories": nutrition.get("calories", 0),
+            "protein": nutrition.get("protein", 0),
+            "carbs": nutrition.get("carbs", 0),
+            "fats": nutrition.get("fats", 0),
+        }
+
+        transaction.on_commit(lambda: async_store_logged_meal_as_suggested.delay(user.id, meal_data))
+
         
     @action(
         methods=["post"],

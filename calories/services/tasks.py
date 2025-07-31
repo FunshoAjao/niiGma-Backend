@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+import time
 
 from utils.helpers.cloudinary import CloudinaryFileUpload
 logger = logging.getLogger(__name__)
@@ -54,6 +55,33 @@ def update_user_calorie_streak(user_id):
         CalorieAIAssistant(user).update_calorie_streak()
     except User.DoesNotExist:
         return
+
+@shared_task
+def async_store_logged_meal_as_suggested(user_id, logged_meal_data):
+    try:
+        user = User.objects.select_related("calorie_qa").get(id=user_id)
+        if not hasattr(user, "calorie_qa"):
+            return
+        calorie_goal = user.calorie_qa
+    except CalorieQA.DoesNotExist:
+        return 
+
+    date = logged_meal_data.get("date", timezone.now().date())
+
+    if SuggestedMeal.objects.filter(calorie_goal=calorie_goal, meal_type=logged_meal_data["meal_type"], date=date).exists():
+        return  # Already stored, skip
+
+    SuggestedMeal.objects.create(
+        calorie_goal=calorie_goal,
+        is_template=True,  # Mark as template for reuse
+        meal_type=logged_meal_data["meal_type"],
+        food_item=logged_meal_data["food_item"],
+        calories=logged_meal_data.get("calories", 0),
+        protein=logged_meal_data.get("protein", 0),
+        carbs=logged_meal_data.get("carbs", 0),
+        fats=logged_meal_data.get("fats", 0)
+    )
+
 
 class CalorieAIAssistant:
     def __init__(self, user: User, logged_meal : LoggedMealSerializer=None):
@@ -381,7 +409,7 @@ class CalorieAIAssistant:
         Daily Calorie Target: {calorie_goal.daily_calorie_target} kcal
 
         User Profile:
-        - Age: {getattr(user, 'age', 'Unknown')}
+        - Age: {user.age or 'Unknown'}
         - Gender: {getattr(user, 'gender', 'Unknown')}
         - Weight: {calorie_goal.current_weight or 'Unknown'} {calorie_goal.weight_unit or ''}
         - Goal Weight: {calorie_goal.goal_weight or 'Unknown'} {calorie_goal.weight_unit or ''}
@@ -488,6 +516,50 @@ class CalorieAIAssistant:
             )
         return response
 
+    def get_ai_response_with_retry(self, prompt, max_retries=3, delay=2, parse_json=True):
+        """
+        Tries to get a valid AI response with retry logic for JSONDecodeError.
+        Retries up to `max_retries` times with a delay between attempts.
+        """
+        for attempt in range(max_retries):
+            response = OpenAIClient.generate_daily_meal_plan(prompt)
+            
+            if not response:
+                raise serializers.ValidationError(
+                    {"message": "Failed to get analysis from the AI service.", "status": "failed"},
+                    code=500
+                )
+
+            logging.debug(f"Attempt {attempt + 1}: Raw AI Response:")
+            logging.debug(response)
+            
+            if not parse_json:
+                return response.strip()
+
+            try:
+                response_json = json.loads(response)
+                return response_json  # Return if successful
+            except json.JSONDecodeError as e:
+                logging.error(f"JSONDecodeError: {e}")
+                logging.error("Response that caused the error:")
+                logging.error(response)
+
+                # If it's the last attempt, raise the error
+                if attempt == max_retries - 1:
+                    raise serializers.ValidationError(
+                        {"message": "Failed to parse AI response. Invalid JSON format.", "status": "failed"},
+                        code=500
+                    )
+
+                # Wait before retrying
+                time.sleep(delay)
+                logging.info(f"Retrying... (Attempt {attempt + 2})")
+
+        # If all retries fail, return an error
+        raise serializers.ValidationError(
+            {"message": "Failed to process the analysis after multiple attempts.", "status": "failed"},
+            code=500
+        )
             
     def generate_suggested_meals(self, calorie_goal_id):
         try:
@@ -582,10 +654,11 @@ class CalorieAIAssistant:
                     meal_type=meal_type,
                     food_item=f"{meal_type.title()} Item Example",
                     calories=int(daily_target * ratio),
-                    protein=meal.get('protein_g', 0),
-                    carbs=meal.get('carbs_g', 0),
-                    fats=meal.get('fat_g', 0)
+                    protein=0,
+                    carbs=0,
+                    fats=0
                 ))
+
 
         # Bulk insert meals for the day
         SuggestedMeal.objects.bulk_create(meal_entries)
@@ -775,27 +848,27 @@ class CalorieAIAssistant:
         
     
     def estimate_nutrition_with_ai(self, description, number_of_servings_or_gram_or_slices, measurement_unit) -> dict:
-        user_country = getattr(self.user, "country", "Nigeria")
+        user_country = getattr(self.user, "country", "Canada")
         prompt = f"""
             You are a knowledgeable nutritionist.
 
-            Please estimate the total calories, protein (g), fats (g), and carbohydrates (g) for the following food description:
+            Estimate total **calories**, **protein (g)**, **fats (g)**, and **carbohydrates (g)** for the following meal:
 
-            "{description}"
+            **Description:** "{description}"
 
-            The food was consumed in **{number_of_servings_or_gram_or_slices} {measurement_unit}(s)**.
+            The user consumed **{number_of_servings_or_gram_or_slices} {measurement_unit}(s)** 
+            (e.g., 1 serving ≈ 250g if known).
 
-            Base your estimates on standard portion sizes typical of {user_country} unless otherwise specified.
+            Assume standard portion sizes in {user_country} unless otherwise specified.
 
-            Respond ONLY with a JSON object, no explanations or additional text, in this exact format:
+            Respond ONLY in JSON with this exact format:
             {{
-                "calories": 123,
-                "protein": 4,
-                "fats": 2,
-                "carbs": 25
+            "calories": 123,
+            "protein": 4,
+            "fats": 2,
+            "carbs": 25
             }}
             """
-
 
         # Call the AI service to generate nutrition estimate
         nutrition = OpenAIClient.generate_response(prompt)
@@ -815,12 +888,24 @@ class CalorieAIAssistant:
                 code=500
             )
         
+        return self._sanitize_nutrition_data(nutrition)
+
+        
+    def _sanitize_nutrition_data(self, nutrition: dict) -> dict:
+        def clean(value):
+            try:
+                val = float(value)
+                return max(0, round(val))  # No negatives, round to int
+            except (ValueError, TypeError):
+                return 0
+
         return {
-            "calories": nutrition.get("calories", 0),
-            "protein": nutrition.get("protein", 0),
-            "fats": nutrition.get("fats", 0),
-            "carbs": nutrition.get("carbs", 0),
+            "calories": clean(nutrition.get("calories")),
+            "protein": clean(nutrition.get("protein")),
+            "fats": clean(nutrition.get("fats")),
+            "carbs": clean(nutrition.get("carbs")),
         }
+
 
     def generate_health_insight(self, calorie_goal, total_calories, macros_percent, date):
         prompt = f"""

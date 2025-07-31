@@ -2,6 +2,7 @@ from django.db import models
 from accounts.models import User
 from calories.choices import ReminderChoices
 from common.models import BaseModel
+from django.utils import timezone
 
 MEAL_TYPES = [
         ("breakfast", "Breakfast"),
@@ -49,14 +50,17 @@ class CalorieQA(BaseModel):
     goal_timeline = models.DateTimeField(blank=True, null=True)
     
     def __str__(self):
-        return f'{self.user} calorie'
+        return f'{self.user.first_name} calorie'
     
     class Meta:
         ordering = ("-created_at",)
         
     @property
     def days_left(self):
-        return (self.goal_timeline - self.created_at).days
+        if not self.goal_timeline:
+            return 0
+        days = (self.goal_timeline.date() - timezone.now().date()).days
+        return max(days, 0) 
 
     @property
     def daily_calorie_target(self):
@@ -87,7 +91,7 @@ class CalorieQA(BaseModel):
 
 class SuggestedMeal(BaseModel):
     calorie_goal = models.ForeignKey(CalorieQA, on_delete=models.CASCADE)
-    date = models.DateTimeField()
+    date = models.DateTimeField(null=True)
     meal_type = models.CharField(max_length=10, choices=MEAL_TYPES)
     meal_name = models.CharField(max_length=200, blank=True, null=True)
     food_item = models.CharField(max_length=100)
@@ -95,12 +99,15 @@ class SuggestedMeal(BaseModel):
     protein = models.IntegerField(default=0)
     carbs = models.IntegerField(default=0)
     fats = models.IntegerField(default=0)
+    is_template = models.BooleanField(default=False)  # Distinguish reusable meals
     
     def __str__(self):
-        return f'{self.calorie_goal} suggested meal'
+        return f'{self.calorie_goal.user.first_name} - {self.meal_type} {"(template)" if self.is_template else ""}'
+
 
     class Meta:
         unique_together = ("calorie_goal", "created_at", "meal_type", "food_item")
+        ordering = ("-created_at",)
         
 class SuggestedWorkout(BaseModel):
     calorie_goal = models.ForeignKey(CalorieQA, on_delete=models.CASCADE)
