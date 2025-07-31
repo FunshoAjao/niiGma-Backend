@@ -29,12 +29,18 @@ class MealSource(models.TextChoices):
 
 class CalorieSerializer(serializers.ModelSerializer):
     reminder = FlexibleChoiceField(choices=ReminderChoices.choices, default=ReminderChoices.Daily)
+    weight_unit = serializers.CharField()
     class Meta:
         model = CalorieQA
         fields = '__all__'
         read_only_fields = [
             "user", 'id', 'created_at', 'updated_at'
         ]
+        
+    def validate_weight_unit(self, value):
+        if value == "lbs":
+            return "lb"
+        return value
         
 class CalorieAISerializer(serializers.Serializer):
     prompt = serializers.CharField()
