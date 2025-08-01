@@ -23,6 +23,11 @@ from datetime import date
 from django.db.models import Sum
 from django.db.models import Q
 from celery import shared_task
+import string
+
+def clean_string(input_string):
+    # Allow only printable characters (removes control characters)
+    return ''.join(c for c in input_string if c in string.printable)
 
 @shared_task
 def reset_missed_calorie_streaks():
@@ -347,16 +352,24 @@ class CalorieAIAssistant:
 
         # Compose full prompt with profile + history
         prompt = self.get_user_prompt_with_previous_conversation(user_context, chat_history)
-        # Call OpenAI here and parse the JSON result
+        
         response = OpenAIClient.generate_response(prompt)
         try:
-            parsed = json.loads(response)
+            response = response.strip()
+            response_cleaned = clean_string(response)
+            response_cleaned = response.replace("\\n", "\n").replace("\\t", "\t")
+
+            parsed = json.loads(response_cleaned)
+
             title = parsed.get("title", "AI Conversation")
-            message = parsed.get("message", response)
-        except json.JSONDecodeError:
+            message = parsed.get("message", response_cleaned)
+        except json.JSONDecodeError as e:
+            print("Error parsing JSON:", e)  # Log the error for debugging
+            logger.error(f"JSON parsing error: {e}")
             title = "AI Conversation"
-            message = response
-            
+            message = response_cleaned  # Default to raw response if JSON parsing fails
+
+        # If no message was found, raise an error
         if not message:
             raise serializers.ValidationError(
                 {"message": "Failed to get a response from the Niigma AI service.", "status": "failed"},
@@ -372,7 +385,7 @@ class CalorieAIAssistant:
         PromptHistory.objects.create(
             user=self.user,
             section=Section.NONE,
-            prompt=text,
+            prompt=user_context,
             response=message,
             conversation=conversation
         )
