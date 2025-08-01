@@ -638,7 +638,7 @@ class CalorieAIAssistant:
         # Prevent duplication
         if SuggestedMeal.objects.filter(calorie_goal=calorie_goal, date=date).exists():
             return SuggestedMeal.objects.filter(calorie_goal=calorie_goal, date=date)
-
+        
         # Call AI-based suggestion
         meals = self.generate_daily_meal_plan(calorie_goal, date)
 

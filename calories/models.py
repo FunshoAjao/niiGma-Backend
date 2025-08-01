@@ -66,9 +66,33 @@ class CalorieQA(BaseModel):
     def daily_calorie_target(self):
         # Simplified: 7700 kcal = 1kg
         weight_diff = self.goal_weight - self.current_weight
+
+        if weight_diff == 0:
+            # Return maintenance calories (basic BMR * activity factor, rough estimate)
+            return self.estimated_maintenance_calories()
+
         total_calories_needed = 7700 * abs(weight_diff)
         days = self.days_left
         return int(total_calories_needed / days) if days > 0 else 0
+    
+    def estimated_maintenance_calories(self):
+        weight = self.current_weight
+        # Estimate for average height/age if not available
+        # 10 * weight (kg) + 6.25 * height (cm) – 5 * age (y) + 5 (men) or -161 (women)
+        bmr = 10 * weight + 6.25 * 170 - 5 * 30 + 5  # adjust as needed
+        activity_factor = self.get_activity_factor()
+        return int(bmr * activity_factor)
+
+    def get_activity_factor(self):
+        activity_map = {
+            "sedentary": 1.2,
+            "light": 1.375,
+            "moderate": 1.55,
+            "active": 1.725,
+            "very_active": 1.9
+        }
+        return activity_map.get(self.activity_level.lower(), 1.2)
+
     
     @property
     def macro_nutrient_targets(self):
