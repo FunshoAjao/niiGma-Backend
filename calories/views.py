@@ -209,7 +209,7 @@ class CalorieViewSet(viewsets.ModelViewSet):
             Q(calorie_goal=calorie) & (Q(date__date=day) | Q(is_template=True))
         ).order_by('meal_type', '-is_template')
 
-        if suggested_meals.exists():
+        if not suggested_meals.exists() or not suggested_meals.filter(is_template=False).exists():
             CalorieAIAssistant(user).generate_suggested_meals_for_the_day(calorie.id, day)
             suggested_meals = suggested_meals = SuggestedMeal.objects.filter(
                 Q(calorie_goal=calorie) & (Q(date__date=day) | Q(is_template=True))
