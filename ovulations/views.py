@@ -40,6 +40,14 @@ class CycleSetupViewSet(viewsets.ModelViewSet):
         user.save()
 
         return CustomSuccessResponse(message="All ovulation setup records deleted successfully.")
+    
+    def list(self, request, *args, **kwargs):
+        """
+        List all cycle setups for the authenticated user.
+        """
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return CustomSuccessResponse(data=serializer.data, message="Cycle setups retrieved successfully.")
 
     def create(self, request, *args, **kwargs):
         user = request.user
