@@ -3,35 +3,35 @@ from .models import CycleSetup, OvulationCycle, OvulationLog, CycleState, CycleI
 
 @admin.register(CycleSetup)
 class CycleSetupAdmin(admin.ModelAdmin):
-    search_fields = ('user', 'first_period_date')
-    list_display = ('user', 'first_period_date', 'setup_complete')
+    search_fields = ('user__email', 'first_period_date')
+    list_display = ('user__email', 'first_period_date', 'setup_complete')
     ordering = ('-created_at',)
-    list_filter = ('user',)
+    list_filter = ('user__email',)
     
 @admin.register(OvulationCycle)
 class OvulationCycleAdmin(admin.ModelAdmin):
-    search_fields = ('user', 'cycle_length')
-    list_display = ('user', 'cycle_length', 'period_length', 'start_date', 'end_date', 'is_predicted')
+    search_fields = ('user__email', 'cycle_length')
+    list_display = ('user__email', 'cycle_length', 'period_length', 'start_date', 'end_date', 'is_predicted')
     ordering = ('-created_at',)
-    list_filter = ('user',)
+    list_filter = ('user__email',)
     
 @admin.register(OvulationLog)
 class OvulationLogAdmin(admin.ModelAdmin):
-    search_fields = ('user', 'date', 'symptoms')
-    list_display = ('user', 'date', 'symptoms')
+    search_fields = ('user__email', 'date', 'symptoms')
+    list_display = ('user__email', 'date', 'symptoms')
     ordering = ('-created_at',)
-    list_filter = ('user',)
+    list_filter = ('user__email',)
     
 @admin.register(CycleState)
 class CycleStateAdmin(admin.ModelAdmin):
-    search_fields = ('user', 'day_in_cycle', 'phase', 'regularity')
-    list_display = ('user', 'day_in_cycle', 'phase', 'regularity', 'created_at')
+    search_fields = ('user__email', 'day_in_cycle', 'phase', 'regularity')
+    list_display = ('user__email', 'day_in_cycle', 'phase', 'regularity', 'created_at')
     ordering = ('-created_at',)
-    list_filter = ('user',)
+    list_filter = ('user__email',)
     
 @admin.register(CycleInsight)
 class CycleInsightAdmin(admin.ModelAdmin):
-    search_fields = ('user', 'phase', 'insight_type')
-    list_display = ('user', 'phase', 'created_at')
+    search_fields = ('user__email', 'phase', 'insight_type')
+    list_display = ('user__email', 'phase', 'created_at')
     ordering = ('-created_at',)
-    list_filter = ('user',)
+    list_filter = ('user__email',)
