@@ -648,3 +648,26 @@ class PromptHistoryView(viewsets.ModelViewSet):
             return self.get_paginated_response(serializer.data)
         serializer = self.get_serializer(queryset, many=True)
         return self.get_paginated_response_for_none_records(data=serializer.data)
+    
+    @action(
+        detail=False, methods=["delete"],
+        url_path="delete_conversation/(?P<conversation_id>[^/.]+)",
+        permission_classes=[IsAuthenticated]
+        )
+    def delete_conversation(self, request, conversation_id):
+        """Delete a conversation and its messages."""
+        if not conversation_id:
+            return CustomErrorResponse(message="Conversation ID is required", status=400)
+        
+        try:
+            conversation = Conversation.objects.get(id=conversation_id, user=request.user)
+            # Delete all messages associated with the conversation
+            conversation.messages.all().delete()
+            # Delete the conversation itself
+            conversation.delete()
+            return CustomSuccessResponse(message="Conversation deleted successfully")
+        except Conversation.DoesNotExist:
+            return CustomErrorResponse(message="Conversation not found", status=404)
+        except Exception as e:
+            logger.error(f"Error deleting conversation: {str(e)}")
+            return CustomErrorResponse(message="Failed to delete conversation", status=500)
