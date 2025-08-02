@@ -23,6 +23,22 @@ class CycleSetupViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return self.queryset.filter(user=self.request.user)
+    
+    def delete(self, request, *args, **kwargs):
+        """
+        Delete all records related to this ovulation set up.
+        """
+        user = request.user
+        CycleSetup.objects.filter(user=user).delete()
+        OvulationCycle.objects.filter(user=user).delete()
+        OvulationLog.objects.filter(user=user).delete()
+        CycleState.objects.filter(user=user).delete()
+        CycleInsight.objects.filter(user=user).delete()
+
+        user.is_ovulation_tracker_setup = False
+        user.save()
+
+        return CustomSuccessResponse(message="All ovulation setup records deleted successfully.")
 
     def create(self, request, *args, **kwargs):
         user = request.user
