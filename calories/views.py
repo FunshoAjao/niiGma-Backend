@@ -201,6 +201,8 @@ class CalorieViewSet(viewsets.ModelViewSet):
     def suggested_meal_plan_for_the_day(self, request, day, *args, **kwargs):
         user = request.user
         calorie = CalorieQA.objects.filter(user=user).last()
+        if calorie.days_left <= 0:
+            return CustomErrorResponse(message="You have reached your goal timeline.", status=400)
 
         if not calorie:
             return CustomErrorResponse(message="Calorie onboarding not done yet!", status=404)
@@ -311,17 +313,16 @@ class CalorieViewSet(viewsets.ModelViewSet):
 
 
     def save_logged_meal(self, user, validated_data, nutrition):
-        LoggedMeal.objects.update_or_create(
+        LoggedMeal.objects.create(
             user=user,
             meal_type=validated_data["meal_type"],
             date=validated_data.get("date", timezone.now().date()),
-            defaults={
-                "food_item": validated_data["food_item"],
-                "number_of_servings_or_gram_or_slices": validated_data["number_of_servings_or_gram_or_slices"],
-                "measurement_unit": validated_data["measurement_unit"],
-                **nutrition
-            }
+            food_item=validated_data["food_item"],
+            number_of_servings_or_gram_or_slices=validated_data["number_of_servings_or_gram_or_slices"],
+            measurement_unit=validated_data["measurement_unit"],
+            **nutrition
         )
+
 
 
     def trigger_async_tasks(self, user, validated_data, nutrition):
