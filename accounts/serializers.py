@@ -176,9 +176,30 @@ class PushNotificationSerializer(serializers.Serializer):
 class DeviceTokenSerializer(serializers.Serializer):
     device_token = serializers.CharField(required=True)
     device_type = serializers.ChoiceField(choices=DeviceType, required=True)
-    
+        
+class PromptSummarySerializer(serializers.ModelSerializer):
+    section = serializers.CharField()
+    short_response = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PromptHistory
+        fields = ("section", "short_response")
+
+    def get_short_response(self, obj):
+        return obj.response[:100] + "..." if len(obj.response) > 100 else obj.response
+
 class ConversationSerializer(serializers.ModelSerializer):
+    messages = serializers.SerializerMethodField()
+
     class Meta:
         model = Conversation
-        fields = '__all__'
+        fields = ("id", "title", "created_at", "messages", "user")
         read_only_fields = ['id', 'user', 'created_at', 'updated_at']
+
+    def get_messages(self, obj : Conversation):
+        section_latest = (
+            obj.messages
+            .order_by("section", "-created_at")
+            .distinct("section")
+        )
+        return PromptSummarySerializer(section_latest, many=True).data
