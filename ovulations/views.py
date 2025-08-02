@@ -29,6 +29,7 @@ class CycleSetupViewSet(viewsets.ModelViewSet):
         Delete all records related to this ovulation set up.
         """
         user = request.user
+        CycleState.objects.filter(user=user).delete()
         CycleSetup.objects.filter(user=user).delete()
         OvulationCycle.objects.filter(user=user).delete()
         OvulationLog.objects.filter(user=user).delete()
