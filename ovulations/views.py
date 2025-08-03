@@ -261,22 +261,18 @@ class CycleSetupViewSet(viewsets.ModelViewSet):
     @action(
         detail=False,
         methods=["get"],
-        url_path="get_phases_for_the_year_by_start_date/(?P<start_date>[^/.]+)"
+        url_path="get_phases_for_the_year_by_first_period_date"
     )
-    def get_phases_for_the_year_by_start_date(self, request, start_date=None):
+    def get_phases_for_the_year_by_first_period_date(self, request):
         from django.core.cache import cache
         """
-        Get all phases for the year based on a given start date.
+        Get all phases for the year based on the first period date created by the user.
         """
         user = request.user
-
-        try:
-            start_date = timezone.datetime.strptime(start_date, "%Y-%m-%d").date()
-        except ValueError:
-            return CustomErrorResponse(message="Invalid date format. Use YYYY-MM-DD", status=400)
-
+        first_period_date = user.cycle_setup_records.first_period_date if user.cycle_setup_records else timezone.now().date()
+        
         # Ensure user has completed setup
-        cache_key = f"cycle_phase:{user.id}:{start_date.year}"
+        cache_key = f"cycle_phase:{user.id}:{first_period_date.year}"
         cached = cache.get(cache_key)
         if cached:
             logger.info(f"Cache hit for {cache_key}")
@@ -285,7 +281,7 @@ class CycleSetupViewSet(viewsets.ModelViewSet):
         if not setup:
             return CustomErrorResponse(message="Please complete your cycle setup first.", status=400)
 
-        phases_in_year = OvulationAIAssistant(user, setup).get_cycle_phase_for_year(start_date)
+        phases_in_year = OvulationAIAssistant(user, setup).get_cycle_phase_for_year(first_period_date)
         cache.set(cache_key, phases_in_year, timeout=60 * 60 * 24)  # Cache for 1 day
 
         return CustomSuccessResponse(data=phases_in_year, message="Phases for the year retrieved successfully.")
