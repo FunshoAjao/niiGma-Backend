@@ -1028,7 +1028,9 @@ class CalorieViewSet(viewsets.ModelViewSet):
                 "meals": {
                     "suggested": suggested_meals.aggregate(total=Sum('calories'))['total'] or 0,
                     "logged": total_logged_meal_calories,
-                    "difference": total_logged_meal_calories - (user.calorie_qa.daily_calorie_target or 0)
+                    "difference": total_logged_meal_calories - (
+                        suggested_meals.aggregate(total=Sum('calories'))['total'] or 0
+                    )
                 },
                 "workout": {
                     "suggested": suggested_workout.estimated_calories_burned if suggested_workout else 0,
@@ -1038,15 +1040,15 @@ class CalorieViewSet(viewsets.ModelViewSet):
                 "macro_nutrients": {
                     "protein": {
                         "logged": total_protein,
-                        "goal": macros["protein"]
+                        "goal": macros.get("protein", 0)
                     },
                     "fat": {
                         "logged": total_fat,
-                        "goal": macros["fat"]
+                        "goal": macros.get("fat", 0)
                     },
                     "carbs": {
                         "logged": total_carbs,
-                        "goal": macros["carbs"]
+                        "goal": macros.get("carbs", 0)
                     },
                 },
                 "net_calories": total_logged_meal_calories - total_logged_burn
