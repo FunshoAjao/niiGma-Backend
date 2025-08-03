@@ -58,7 +58,7 @@ class CycleSetupViewSet(viewsets.ModelViewSet):
         data = request.data.copy()
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
-
+        validated_data = serializer.validated_data
         setup_complete = all([
             data.get("first_period_date"),
             data.get("period_length"),
@@ -68,12 +68,12 @@ class CycleSetupViewSet(viewsets.ModelViewSet):
         CycleSetup.objects.update_or_create(
                 user=user,
                 defaults={
-                    'first_period_date': serializer.validated_data.get('first_period_date'),
-                    'period_length': serializer.validated_data.get('period_length'),
-                    'cycle_length': serializer.validated_data.get('cycle_length'),
-                    'regularity': serializer.validated_data.get('regularity', PeriodRegularity.REGULAR),
+                    'first_period_date': validated_data['first_period_date'],
+                    'period_length': validated_data['period_length'],
+                    'cycle_length': validated_data['cycle_length'],
+                    'regularity': validated_data['regularity'],
                     'setup_complete': setup_complete,
-                    'current_focus': serializer.validated_data.get('current_focus'),
+                    'current_focus': validated_data['current_focus'],
                 }
             )
 
