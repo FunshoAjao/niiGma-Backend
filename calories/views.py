@@ -1021,7 +1021,7 @@ class CalorieViewSet(viewsets.ModelViewSet):
                 "date": target_date,
                 "calorie_goal": user.calorie_qa.daily_calorie_target,
                 "calories": {
-                    "consumed": total_logged_meal_calories,
+                    "consumed": max(total_logged_meal_calories - total_logged_burn, 0),
                     "goal": user.calorie_qa.daily_calorie_target,
                     "left": max(user.calorie_qa.daily_calorie_target - total_logged_meal_calories, 0)
                 },
