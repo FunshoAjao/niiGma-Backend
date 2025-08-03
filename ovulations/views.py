@@ -65,7 +65,18 @@ class CycleSetupViewSet(viewsets.ModelViewSet):
             data.get("cycle_length")
         ])
 
-        serializer.save(user=user, setup_complete=setup_complete)
+        CycleSetup.objects.update_or_create(
+                user=user,
+                defaults={
+                    'first_period_date': serializer.validated_data.get('first_period_date'),
+                    'period_length': serializer.validated_data.get('period_length'),
+                    'cycle_length': serializer.validated_data.get('cycle_length'),
+                    'regularity': serializer.validated_data.get('regularity', PeriodRegularity.REGULAR),
+                    'setup_complete': setup_complete,
+                    'current_focus': serializer.validated_data.get('current_focus'),
+                }
+            )
+
         user.is_ovulation_tracker_setup = True
         user.save()
 
