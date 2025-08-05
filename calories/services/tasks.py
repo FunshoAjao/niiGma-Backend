@@ -717,61 +717,6 @@ class CalorieAIAssistant:
             return grams_per_slice * servings
 
         return default_grams * servings
-        
-    # def get_food_by_barcode(self, barcode: str) -> dict:
-    #     try:
-    #         response = requests.get(f"https://world.openfoodfacts.org/api/v0/product/{barcode}.json")
-    #         if response.status_code == 200:
-    #             data = response.json()
-                
-    #             # Barcode not recognized in Open Food Facts
-    #             if data.get("status") != 1:
-    #                 raise serializers.ValidationError(
-    #                     {"message": "No product found for the given barcode.", "status": "failed"},
-    #                     code=400
-    #                 )
-    #             product = data.get("product", {})
-                
-    #             # Product exists but no useful data
-    #             if not product or not product.get("nutriments"):
-    #                 raise serializers.ValidationError(
-    #                     {"message": "Product information is incomplete or missing for this barcode.", "status": "failed"},
-    #                     code=400
-    #                 )
-                
-    #             logger.info(f"name: {product.get('product_name', 'Unknown')}")
-    #             print(f"name of the product logged by barcode: {product.get('product_name', 'Unknown')}")
-                
-    #             nutriments = product.get("nutriments", {})
-    #             food_name = product.get("product_name", "Unknown")
-                
-    #             # Nutrients per 100g
-    #             kcal = float(nutriments.get("energy-kcal_100g", 0))
-    #             protein = float(nutriments.get("proteins_100g", 0))
-    #             carbs = float(nutriments.get("carbohydrates_100g", 0))
-    #             fats = float(nutriments.get("fat_100g", 0))
-
-    #             total_grams = self._get_weight_in_grams(self.logged_meal['measurement_unit'], food_name, 
-    #                                                     self.logged_meal['number_of_servings_or_gram_or_slices'], product)
-    #             multiplier = total_grams / 100
-                
-    #             return {
-    #                 "name": food_name,
-    #                 "calories": round(kcal * multiplier, 2),
-    #                 "protein": round(protein * multiplier, 2),
-    #                 "carbs": round(carbs * multiplier, 2),
-    #                 "fats": round(fats * multiplier, 2),
-    #             }
-    #         else:
-    #             logger.error(f"Barcode lookup failed with status {response.status_code}")
-    #             raise ConnectionError("Unable to fetch data from food database.")
-            
-    #     except (requests.exceptions.RequestException, Exception) as e:
-    #         logger.error(f"Barcode API request failed: {e}")
-    #         raise serializers.ValidationError(
-    #                     {"message": f"Could not connect to barcode nutrition API. Please try again later. {e}", "status": "failed"},
-    #                     code=400
-    #                 )
     
     def get_food_by_barcode(self, barcode: str) -> dict:
         try:
@@ -881,7 +826,6 @@ class CalorieAIAssistant:
     ) -> dict:
         if meal_source == MealSource.Barcode:
             food_item = self.get_food_by_barcode(barcode)
-            print(f"Food item from barcode: {food_item}")
             if food_item:
                 return {
                     "food_name": food_item["name"],
