@@ -1,4 +1,5 @@
 from datetime import date
+import random
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -127,7 +128,7 @@ class TriviaSessionViewSet(viewsets.ModelViewSet):
 
         with transaction.atomic():
             session = TriviaSession.objects.create(user=user, source=TriviaSessionTypeChoices.Free)
-            questions = daily.questions.order_by('?')[:5]  # randomly select 5 questions
+            questions = random.sample(daily.questions, k=min(5, len(daily.questions)))  # randomly select 5 questions
             for q in questions:
                 TriviaQuestion.objects.create(
                     session=session,
