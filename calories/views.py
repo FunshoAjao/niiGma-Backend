@@ -294,8 +294,8 @@ class CalorieViewSet(viewsets.ModelViewSet):
     def extract_nutrition_data(self, user, validated_data):
         return CalorieAIAssistant(user, validated_data).extract_food_items_from_meal_source(
             validated_data.get("meal_source"),
-            validated_data["number_of_servings_or_gram_or_slices"],
-            validated_data["measurement_unit"],
+            validated_data.get("number_of_servings_or_gram_or_slices", 1),
+            validated_data.get("measurement_unit"),
             validated_data.get("food_item"),
             validated_data.get("barcode"),
             validated_data.get("image_url")
@@ -318,8 +318,8 @@ class CalorieViewSet(viewsets.ModelViewSet):
             meal_type=validated_data["meal_type"],
             date=validated_data.get("date", timezone.now().date()),
             food_item=validated_data["food_item"],
-            number_of_servings_or_gram_or_slices=validated_data["number_of_servings_or_gram_or_slices"],
-            measurement_unit=validated_data["measurement_unit"],
+            number_of_servings_or_gram_or_slices=validated_data.get("number_of_servings_or_gram_or_slices", 1),
+            measurement_unit=validated_data.get('measurement_unit', 'grams'),
             **nutrition
         )
 

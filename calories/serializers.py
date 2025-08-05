@@ -75,7 +75,7 @@ class LoggedMealSerializer(serializers.ModelSerializer):
     barcode = serializers.CharField(required=False, allow_null=True)
     image_url = serializers.CharField(allow_null=True)
     food_item = serializers.CharField(allow_null=True, allow_blank=True)
-    number_of_servings_or_gram_or_slices = serializers.IntegerField(allow_null=True)
+    number_of_servings_or_gram_or_slices = serializers.IntegerField(allow_null=True, required=False)
     class Meta:
         model = LoggedMeal
         fields = ['meal_type', 'food_item', 'date', 'calories', 'protein', 'carbs', 'fats',

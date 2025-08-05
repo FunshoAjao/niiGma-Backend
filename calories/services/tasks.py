@@ -25,6 +25,19 @@ from django.db.models import Q
 from celery import shared_task
 import string
 
+def extract_grams(text):
+    match = re.search(r'([\d.]+)\s*(g|kg|ml|l)', text.lower())
+    if match:
+        value = float(match.group(1))
+        unit = match.group(2)
+        if unit == "kg":
+            return value * 1000
+        elif unit == "l":
+            return value * 1000  # assuming density similar to water
+        return value
+    return None
+
+
 def clean_string(input_string):
     # Allow only printable characters (removes control characters)
     return ''.join(c for c in input_string if c in string.printable)
@@ -705,43 +718,117 @@ class CalorieAIAssistant:
 
         return default_grams * servings
         
+    # def get_food_by_barcode(self, barcode: str) -> dict:
+    #     try:
+    #         response = requests.get(f"https://world.openfoodfacts.org/api/v0/product/{barcode}.json")
+    #         if response.status_code == 200:
+    #             data = response.json()
+                
+    #             # Barcode not recognized in Open Food Facts
+    #             if data.get("status") != 1:
+    #                 raise serializers.ValidationError(
+    #                     {"message": "No product found for the given barcode.", "status": "failed"},
+    #                     code=400
+    #                 )
+    #             product = data.get("product", {})
+                
+    #             # Product exists but no useful data
+    #             if not product or not product.get("nutriments"):
+    #                 raise serializers.ValidationError(
+    #                     {"message": "Product information is incomplete or missing for this barcode.", "status": "failed"},
+    #                     code=400
+    #                 )
+                
+    #             logger.info(f"name: {product.get('product_name', 'Unknown')}")
+    #             print(f"name of the product logged by barcode: {product.get('product_name', 'Unknown')}")
+                
+    #             nutriments = product.get("nutriments", {})
+    #             food_name = product.get("product_name", "Unknown")
+                
+    #             # Nutrients per 100g
+    #             kcal = float(nutriments.get("energy-kcal_100g", 0))
+    #             protein = float(nutriments.get("proteins_100g", 0))
+    #             carbs = float(nutriments.get("carbohydrates_100g", 0))
+    #             fats = float(nutriments.get("fat_100g", 0))
+
+    #             total_grams = self._get_weight_in_grams(self.logged_meal['measurement_unit'], food_name, 
+    #                                                     self.logged_meal['number_of_servings_or_gram_or_slices'], product)
+    #             multiplier = total_grams / 100
+                
+    #             return {
+    #                 "name": food_name,
+    #                 "calories": round(kcal * multiplier, 2),
+    #                 "protein": round(protein * multiplier, 2),
+    #                 "carbs": round(carbs * multiplier, 2),
+    #                 "fats": round(fats * multiplier, 2),
+    #             }
+    #         else:
+    #             logger.error(f"Barcode lookup failed with status {response.status_code}")
+    #             raise ConnectionError("Unable to fetch data from food database.")
+            
+    #     except (requests.exceptions.RequestException, Exception) as e:
+    #         logger.error(f"Barcode API request failed: {e}")
+    #         raise serializers.ValidationError(
+    #                     {"message": f"Could not connect to barcode nutrition API. Please try again later. {e}", "status": "failed"},
+    #                     code=400
+    #                 )
+    
     def get_food_by_barcode(self, barcode: str) -> dict:
         try:
             response = requests.get(f"https://world.openfoodfacts.org/api/v0/product/{barcode}.json")
             if response.status_code == 200:
                 data = response.json()
                 
-                # Barcode not recognized in Open Food Facts
                 if data.get("status") != 1:
                     raise serializers.ValidationError(
                         {"message": "No product found for the given barcode.", "status": "failed"},
                         code=400
                     )
+
                 product = data.get("product", {})
-                
-                # Product exists but no useful data
+
                 if not product or not product.get("nutriments"):
                     raise serializers.ValidationError(
                         {"message": "Product information is incomplete or missing for this barcode.", "status": "failed"},
                         code=400
                     )
-                
+
                 logger.info(f"name: {product.get('product_name', 'Unknown')}")
                 print(f"name of the product logged by barcode: {product.get('product_name', 'Unknown')}")
-                
+
                 nutriments = product.get("nutriments", {})
                 food_name = product.get("product_name", "Unknown")
-                
+
                 # Nutrients per 100g
                 kcal = float(nutriments.get("energy-kcal_100g", 0))
                 protein = float(nutriments.get("proteins_100g", 0))
                 carbs = float(nutriments.get("carbohydrates_100g", 0))
                 fats = float(nutriments.get("fat_100g", 0))
 
-                total_grams = self._get_weight_in_grams(self.logged_meal['measurement_unit'], food_name, 
-                                                        self.logged_meal['number_of_servings_or_gram_or_slices'], product)
+                # Try to infer total grams from product data
+                total_grams = None
+                quantity_str = product.get("quantity", "")
+                product_quantity = product.get("product_quantity")  # numeric in grams or ml
+                serving_size = product.get("serving_size", "")
+
+                if product_quantity:
+                    total_grams = float(product_quantity)
+                elif extract_grams(quantity_str):
+                    total_grams = extract_grams(quantity_str)
+                elif extract_grams(serving_size):
+                    total_grams = extract_grams(serving_size)
+
+                # Fallback to your method if still unknown
+                if not total_grams:
+                    total_grams = self._get_weight_in_grams(
+                        self.logged_meal['measurement_unit'],
+                        food_name,
+                        self.logged_meal['number_of_servings_or_gram_or_slices'],
+                        product
+                    )
+
                 multiplier = total_grams / 100
-                
+
                 return {
                     "name": food_name,
                     "calories": round(kcal * multiplier, 2),
@@ -749,16 +836,17 @@ class CalorieAIAssistant:
                     "carbs": round(carbs * multiplier, 2),
                     "fats": round(fats * multiplier, 2),
                 }
+
             else:
                 logger.error(f"Barcode lookup failed with status {response.status_code}")
                 raise ConnectionError("Unable to fetch data from food database.")
-            
+
         except (requests.exceptions.RequestException, Exception) as e:
             logger.error(f"Barcode API request failed: {e}")
             raise serializers.ValidationError(
-                        {"message": f"Could not connect to barcode nutrition API. Please try again later. {e}", "status": "failed"},
-                        code=400
-                    )
+                {"message": f"Could not connect to barcode nutrition API. Please try again later. {e}", "status": "failed"},
+                code=400
+            )
     
     def extract_food_items_from_meal_source(self, meal_source, serving_count=1,
                                             measurement_unit="serving", food_description=None,
@@ -793,6 +881,7 @@ class CalorieAIAssistant:
     ) -> dict:
         if meal_source == MealSource.Barcode:
             food_item = self.get_food_by_barcode(barcode)
+            print(f"Food item from barcode: {food_item}")
             if food_item:
                 return {
                     "food_name": food_item["name"],
