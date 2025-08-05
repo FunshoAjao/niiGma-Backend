@@ -86,7 +86,7 @@ def async_store_logged_meal_as_suggested(user_id, logged_meal_data):
 
     date = logged_meal_data.get("date", timezone.now().date())
 
-    if SuggestedMeal.objects.filter(calorie_goal=calorie_goal, meal_type=logged_meal_data["meal_type"], date=date).exists():
+    if SuggestedMeal.objects.filter(calorie_goal=calorie_goal, food_item=logged_meal_data["food_item"], date=date).exists():
         return  # Already stored, skip
 
     SuggestedMeal.objects.create(
