@@ -2,7 +2,7 @@ import json
 import logging
 import re
 import time
-
+from rest_framework.exceptions import ValidationError
 from utils.helpers.cloudinary import CloudinaryFileUpload
 logger = logging.getLogger(__name__)
 import requests
@@ -786,11 +786,19 @@ class CalorieAIAssistant:
                 logger.error(f"Barcode lookup failed with status {response.status_code}")
                 raise ConnectionError("Unable to fetch data from food database.")
 
-        except (requests.exceptions.RequestException, Exception) as e:
-            logger.error(f"Barcode API request failed: {e}")
-            raise serializers.ValidationError(
-                {"message": f"Could not connect to barcode nutrition API. Please try again later. {e}", "status": "failed"},
-                code=400
+        except ValidationError:
+            raise  # Re-raise so DRF handles it cleanly
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"RequestException: {e}")
+            raise ValidationError(
+                {"message": "Could not connect to barcode nutrition API. Please try again later.", "status": "failed"}, code=400
+            )
+
+        except Exception as e:
+            logger.error(f"Unexpected error: {e}")
+            raise ValidationError(
+                {"message": "Something went wrong while processing the barcode.", "status": "failed"}, code=400
             )
     
     def extract_food_items_from_meal_source(self, meal_source, serving_count=1,

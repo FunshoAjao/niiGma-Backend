@@ -74,7 +74,7 @@ class LoggedMealSerializer(serializers.ModelSerializer):
     meal_source = serializers.ChoiceField(choices=MealSource.choices, default=MealSource.Manual)
     barcode = serializers.CharField(required=False, allow_null=True)
     image_url = serializers.CharField(allow_null=True)
-    food_item = serializers.CharField(allow_null=True, allow_blank=True)
+    food_item = serializers.CharField(allow_null=True, allow_blank=True, required=False)
     number_of_servings_or_gram_or_slices = serializers.IntegerField(allow_null=True, required=False)
     class Meta:
         model = LoggedMeal
@@ -131,7 +131,7 @@ class SampleLoggedWorkoutSerializer(serializers.Serializer):
     description = serializers.CharField(required=True)
     
 class SampleLoggedMealSerializer(serializers.Serializer):
-    food_item = serializers.CharField(required=True)
+    food_item = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     meal_source = serializers.ChoiceField(choices=MealSource.choices, default=MealSource.Manual)
     barcode = serializers.CharField(required=False, allow_null=True)
     image_url = serializers.ImageField(required=False, allow_null=True)
