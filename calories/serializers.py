@@ -134,7 +134,8 @@ class SampleLoggedMealSerializer(serializers.Serializer):
     food_item = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     meal_source = serializers.ChoiceField(choices=MealSource.choices, default=MealSource.Manual)
     barcode = serializers.CharField(required=False, allow_null=True)
-    image_url = serializers.ImageField(required=False, allow_null=True)
+    image_url = serializers.CharField(allow_null=True)
+    # image_url = serializers.ImageField(required=False, allow_null=True)
     
     def validate(self, data):
         meal_source = data.get('meal_source')

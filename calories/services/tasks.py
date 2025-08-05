@@ -1090,7 +1090,7 @@ class CalorieAIAssistant:
         image_file = self.save_image_from_base64(base64_image)
         file_name = f'{self.user.first_name} {self.user.id}-meal_image'
         image_url = CloudinaryFileUpload().upload_file_to_cloudinary(image_file, file_name)
-        
+        print(f"Image uploaded to: {image_url}")
         nutrition_info = self.analyze_meal_with_ai(image_url)
         
         return nutrition_info
@@ -1125,14 +1125,15 @@ class CalorieAIAssistant:
             return nutrition
 
         except json.JSONDecodeError as e:
+            logger.error(f"JSON parsing error: {e}")
             raise serializers.ValidationError(
                 {
-                    "message": "Invalid JSON format returned from Niigma AI.",
+                    "message": "Invalid format returned from Niigma AI. Please check the input image or try again.",
                     "error": str(e),
                     "raw_response": response,
                     "status": "failed"
                 },
-                code=500
+                code=400
             )
 
     def update_calorie_streak(self):

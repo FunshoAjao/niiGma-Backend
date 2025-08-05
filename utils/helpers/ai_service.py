@@ -101,4 +101,5 @@ class OpenAIClient:
 
             return response.choices[0].message.content
         except Exception as e:
+            print(f"Error in chat_with_base64_image: {str(e)}")
             raise VerificationFailed(f"{str(e)}")
