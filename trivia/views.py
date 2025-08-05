@@ -127,7 +127,8 @@ class TriviaSessionViewSet(viewsets.ModelViewSet):
 
         with transaction.atomic():
             session = TriviaSession.objects.create(user=user, source=TriviaSessionTypeChoices.Free)
-            for q in daily.questions:
+            questions = daily.questions.order_by('?')[:5]  # randomly select 5 questions
+            for q in questions:
                 TriviaQuestion.objects.create(
                     session=session,
                     question_text=q["question"],
@@ -140,7 +141,7 @@ class TriviaSessionViewSet(viewsets.ModelViewSet):
 
     def _handle_premium_trivia(self, user, today):
         session = TriviaSession.objects.create(user=user, source=TriviaSessionTypeChoices.Premium)
-        questions = TriviaAIAssistant(user).generate_questions_ai(3)
+        questions = TriviaAIAssistant(user).generate_questions_ai(4)
         for q in questions:
             TriviaQuestion.objects.create(
                 session=session,

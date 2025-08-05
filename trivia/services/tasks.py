@@ -23,7 +23,7 @@ def run_daily_question_sync():
             return
 
         # (Re)Generate questions
-        questions = TriviaAIAssistant().generate_questions_ai(3)
+        questions = TriviaAIAssistant().generate_questions_ai(8)
         if not questions:
             logger.warning(f"⚠️ No questions returned by AI for {today}")
             return
