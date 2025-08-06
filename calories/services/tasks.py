@@ -1092,6 +1092,7 @@ class CalorieAIAssistant:
         image_url = CloudinaryFileUpload().upload_file_to_cloudinary(image_file, file_name)
         print(f"Image uploaded to: {image_url}")
         nutrition_info = self.analyze_meal_with_ai(image_url)
+        nutrition_info['image_url'] = image_url
         
         return nutrition_info
         
