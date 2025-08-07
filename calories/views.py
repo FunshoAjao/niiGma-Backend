@@ -270,8 +270,8 @@ class CalorieViewSet(viewsets.ModelViewSet):
                 return CustomErrorResponse(message=serializer.errors, status=400)
 
             calorie_goal = self.validate_and_get_calorie_profile(user)
-            if isinstance(calorie_goal, Response):
-                return calorie_goal  # CustomErrorResponse
+            if isinstance(calorie_goal, CustomErrorResponse):
+                return calorie_goal 
 
             validated_data = serializer.validated_data
             nutrition = self.extract_nutrition_data(user, validated_data)

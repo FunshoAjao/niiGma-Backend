@@ -806,6 +806,7 @@ class CalorieAIAssistant:
                                             barcode=None, scanned_image=None) -> dict:
         if meal_source == MealSource.Barcode:
             food_item = self.get_food_by_barcode(barcode)
+            print(f"Food item extracted from barcode: {food_item}")
             if food_item:
                 return {
                     "food_name": food_item["name"],
@@ -1090,7 +1091,6 @@ class CalorieAIAssistant:
         image_file = self.save_image_from_base64(base64_image)
         file_name = f'{self.user.first_name} {self.user.id}-meal_image'
         image_url = CloudinaryFileUpload().upload_file_to_cloudinary(image_file, file_name)
-        print(f"Image uploaded to: {image_url}")
         nutrition_info = self.analyze_meal_with_ai(image_url)
         nutrition_info['image_url'] = image_url
         

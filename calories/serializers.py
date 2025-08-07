@@ -88,7 +88,7 @@ class LoggedMealSerializer(serializers.ModelSerializer):
         image_url = data.get('image_url')
         food_item = data.get('food_item')
         
-        if meal_source != MealSource.Scanned and food_item is None:
+        if meal_source == MealSource.Manual and food_item is None:
             raise serializers.ValidationError(
                 {"message": "food item is required!", "status": "failed"},
                 code=400
