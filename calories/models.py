@@ -161,6 +161,7 @@ class LoggedMeal(BaseModel):
     image_url = models.URLField(blank=True, null=True)
     measurement_unit = models.CharField(max_length=10, choices=MEASUREMENT_UNITS, default="serving")
     number_of_servings_or_gram_or_slices = models.PositiveBigIntegerField(default=1)
+    quantity = models.FloatField(default=1.0)
     
     class Meta:
         ordering = ("-created_at",)

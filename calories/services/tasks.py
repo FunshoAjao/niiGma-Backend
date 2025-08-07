@@ -803,20 +803,21 @@ class CalorieAIAssistant:
     
     def extract_food_items_from_meal_source(self, meal_source, serving_count=1,
                                             measurement_unit="serving", food_description=None,
-                                            barcode=None, scanned_image=None) -> dict:
+                                            barcode=None, scanned_image=None, quantity = 1.0) -> dict:
         if meal_source == MealSource.Barcode:
             food_item = self.get_food_by_barcode(barcode)
             print(f"Food item extracted from barcode: {food_item}")
             if food_item:
                 return {
                     "food_name": food_item["name"],
-                    "calories": food_item["calories"],
-                    "protein": food_item["protein"],
-                    "carbs": food_item["carbs"],
-                    "fats": food_item["fats"]
+                    "calories": food_item["calories"] * quantity,
+                    "protein": food_item["protein"] * quantity,
+                    "carbs": food_item["carbs"] * quantity,
+                    "fats": food_item["fats"] * quantity
                 }
                 
         elif meal_source == MealSource.Manual:
+            serving_count = quantity or serving_count
             return self.estimate_nutrition_with_ai(food_description, serving_count, measurement_unit)
         
         elif meal_source == MealSource.Scanned:

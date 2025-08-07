@@ -298,7 +298,8 @@ class CalorieViewSet(viewsets.ModelViewSet):
             validated_data.get("measurement_unit"),
             validated_data.get("food_item"),
             validated_data.get("barcode"),
-            validated_data.get("image_url")
+            validated_data.get("image_url"),
+            validated_data.get("quantity", 1.0)
         )
 
 
@@ -316,13 +317,13 @@ class CalorieViewSet(viewsets.ModelViewSet):
         LoggedMeal.objects.create(
             user=user,
             meal_type=validated_data["meal_type"],
+            quantity=validated_data.get('quantity', 1.0),
             date=validated_data.get("date", timezone.now().date()),
             food_item=validated_data["food_item"],
             number_of_servings_or_gram_or_slices=validated_data.get("number_of_servings_or_gram_or_slices", 1),
             measurement_unit=validated_data.get('measurement_unit', 'grams'),
             **nutrition
         )
-
 
 
     def trigger_async_tasks(self, user, validated_data, nutrition):
