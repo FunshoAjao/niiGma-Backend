@@ -1099,6 +1099,10 @@ class CalorieAIAssistant:
         
     def save_image_from_base64(self, base64_str):
         """Decode base64 image and prepare as file for upload"""
+        
+        if base64_str.startswith("http"):
+            return base64_str
+        
         format_, imgstr = base64_str.split(';base64,')
         ext = format_.split('/')[-1]
         return ContentFile(base64.b64decode(imgstr), name='meal_image.' + ext)
