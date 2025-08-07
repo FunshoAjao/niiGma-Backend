@@ -368,6 +368,8 @@ class CalorieViewSet(viewsets.ModelViewSet):
         if not nutrition:
             return CustomErrorResponse(message="Nutrition estimation failed", data={}, status=400)
         
+        if validated_data['meal_source'] == MealSource.Barcode:
+            nutrition['barcode'] = validated_data.get('barcode')
         return CustomSuccessResponse(message="Sample meal!", data=nutrition, status=200)
         
     @action(
