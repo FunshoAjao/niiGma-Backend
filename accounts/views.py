@@ -16,7 +16,7 @@ from accounts.choices import Section
 from accounts.services.tasks import send_otp
 from calories.models import CalorieQA
 from calories.serializers import CalorieSerializer
-from calories.services.tasks import CalorieAIAssistant
+from calories.services.tasks import CalorieAIAssistant, get_suggested_meal_for_user
 from ovulations.services.tasks import calculate_cycle_state
 from reminders.services.tasks import send_push_notification
 from utils.helpers.services import generate_otp
@@ -227,6 +227,10 @@ class UserViewSet(viewsets.ModelViewSet):
         if setup and getattr(setup, "setup_complete", False):
             calculate_cycle_state.delay(user.id, timezone.now().date())
             logger.info(f"Cycle state updated for user: {user.email}")
+        # create suggested meal for user for the day
+        if user.is_calories_setup:
+            get_suggested_meal_for_user.delay(user.id, user.calorie_qa.id)
+            logger.info(f"Suggested meal created for user: {user.email}")
         return CustomSuccessResponse(data=data, message='Logged in successfully')
 
     @action(

@@ -42,6 +42,17 @@ def clean_string(input_string):
     # Allow only printable characters (removes control characters)
     return ''.join(c for c in input_string if c in string.printable)
 
+@shared_task(name="get_suggested_meal_for_user")
+def get_suggested_meal_for_user(user_id, calorie_id):
+    """    Calculates and generates suggested meals for the user based on their calorie goal.
+    """
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        logger.error(f"User with ID {user_id} does not exist.")
+        return
+    CalorieAIAssistant(user).generate_suggested_meals_for_the_day(calorie_id, from_background=True)
+    
 @shared_task
 def reset_missed_calorie_streaks():
     """
@@ -402,7 +413,8 @@ class CalorieAIAssistant:
             response=message,
             conversation=conversation
         )
-
+        conversation.updated_at = now()
+        conversation.save(update_fields=["updated_at"]) 
         return message, conversation.id
 
     def chat_with_ai_with_base64(self, user_context, base64_image,  text=""):
@@ -636,7 +648,7 @@ class CalorieAIAssistant:
                     )
 
 
-    def generate_suggested_meals_for_the_day(self, calorie_goal_id, date=None):
+    def generate_suggested_meals_for_the_day(self, calorie_goal_id, date=None, from_background=False):
         try:
             calorie_goal = CalorieQA.objects.get(id=calorie_goal_id)
         except CalorieQA.DoesNotExist:
@@ -649,7 +661,9 @@ class CalorieAIAssistant:
         daily_target = calorie_goal.daily_calorie_target
 
         # Prevent duplication
-        if SuggestedMeal.objects.filter(calorie_goal=calorie_goal, date=date).exists():
+        if from_background and SuggestedMeal.objects.filter(calorie_goal=calorie_goal, date=date).exists():
+            return
+        elif SuggestedMeal.objects.filter(calorie_goal=calorie_goal, date=date).exists():
             return SuggestedMeal.objects.filter(calorie_goal=calorie_goal, date=date)
         
         # Call AI-based suggestion

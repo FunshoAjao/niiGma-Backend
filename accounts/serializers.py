@@ -193,7 +193,7 @@ class ConversationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Conversation
-        fields = ("id", "title", "created_at", "messages", "user")
+        fields = ("id", "title", "created_at", "messages", "user", "updated_at")
         read_only_fields = ['id', 'user', 'created_at', 'updated_at']
 
     def get_messages(self, obj : Conversation):
