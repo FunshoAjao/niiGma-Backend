@@ -1,6 +1,6 @@
 This project is a Niigma backend built with Django REST Framework, designed to power a mobile app. It includes JWT authentication, Google Sign-In, background task processing with Celery, subscription management, notifications, and more.
 
-# Wellness Coach API
+# Wellness Coach API (Niigma)
 A backend service for a mobile wellness app that helps users track menstrual cycles, nutrition, workouts, and provides AI-powered health insights.  
 Features include:
 - Menstrual cycle tracking and predictions
